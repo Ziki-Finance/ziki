@@ -66,7 +66,7 @@ export default async function FinanceHoldingPage({ params }: { params: Promise<{
         {close !== null ? <p className="text-sm text-zk-text2">Last close: {money(close)}</p> : null}
         {sinceAdded !== null ? (
           <p className={`text-sm ${sinceAdded >= 0 ? "text-zk-text2" : "text-zk-bad-fg"}`}>
-            {sinceAdded >= 0 ? "Up" : "Down"} {signedPercent(Math.abs(sinceAdded))} since you added it
+            {sinceAdded >= 0 ? "Up" : "Down"} {Math.abs(sinceAdded).toFixed(1)}% since you added it
           </p>
         ) : null}
         {paid !== null ? (

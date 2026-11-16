@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { optionalUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { RISK_LEVEL_LABEL, agreementWords, money, normalizeSymbol, profileWords, sharesWords, signedPercent, tickerPath } from "@/lib/finance";
+import { RISK_LEVEL_LABEL, agreementWords, normalizeSymbol, profileWords, sharesWords, signedPercent, tickerPath } from "@/lib/finance";
 import { getProfile, listHoldings } from "@/lib/finance/holdings";
 import { currentViews } from "@/lib/finance/research";
 import { changeSince, lastClose, latestChanges, recentBars } from "@/lib/finance/prices";
@@ -123,7 +123,7 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
                       </Link>
                       {sinceAdded !== null ? (
                         <span className={`block text-xs ${sinceAdded >= 0 ? "text-zk-text2" : "text-zk-bad-fg"}`}>
-                          {sinceAdded >= 0 ? "Up" : "Down"} {signedPercent(Math.abs(sinceAdded))} since you added it
+                          {sinceAdded >= 0 ? "Up" : "Down"} {Math.abs(sinceAdded).toFixed(1)}% since you added it
                         </span>
                       ) : null}
                     </td>
