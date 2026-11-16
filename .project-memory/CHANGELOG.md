@@ -55,6 +55,7 @@
 - `ci.yml` job "Cloudflare Workers build" builds the OpenNext bundle on every PR. `wrangler.jsonc` var `AUTH_URL` = `https://ziki-finance.ibuild-ai.workers.dev`.
 - GitHub repo settings (2026-11-16): secrets CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and DATABASE_URL, and variable APP_URL = `https://ziki-finance.ibuild-ai.workers.dev`.
 - **Verification so far:** the local OpenNext build ran out of disk space (INF-I-006), so builds moved to GitHub Actions (user, 2026-11-16). On PR #1 all 5 checks pass, including "Cloudflare Workers build". Not yet deployed or tested on Workers.
+- 2026-11-16: PR #1 merged (`42b7fb34`). The first deploy (Actions run 43792124930) applied migrations and built the bundle, then failed at `opennextjs-cloudflare deploy`: Wrangler's local platform proxy requires a local connection string for the `HYPERDRIVE` binding. Fix: the deploy step sets `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` to a placeholder (PR #2). Local `pnpm cf:preview` needs the same variable, pointing at a real local or dev Postgres.
 
 ## INF-CR-003 — Replace bcrypt with PBKDF2 for new password hashes
 - **Date:** 2026-11-16 · **Approval:** APPROVED (user, 2026-11-16) · **Implementation:** COMPLETED · **Verification:** VERIFIED locally: 6 new unit tests pass; 432 security/auth tests pass (2 timed out under load, then passed on re-run); `tsc --noEmit` exit 0. CI green on PR #1.
