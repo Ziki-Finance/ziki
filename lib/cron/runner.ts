@@ -18,6 +18,7 @@ import { sweepSecurityChecks } from "@/lib/security-checks/engine";
 import { retryPendingWithdrawals } from "@/lib/coins/withdraw";
 import { sweepFallback } from "@/lib/security-checks/fallback";
 import { sweepTesting } from "@/lib/agent-api/testing-sweep";
+import { sweepFinance } from "@/lib/finance/research";
 
 export const FAILURE_ALERT_THRESHOLD = 3;
 const consecutiveFailures = new Map<string, number>();
@@ -71,6 +72,8 @@ export type PlatformSweepsResult = {
     };
     orphanedIssues: { status: "ok" | "error"; reopened?: number; error?: string };
     testing: { status: "ok" | "error"; toOwners?: number; escalated?: number; summaries?: number; error?: string };
+    /** Ziki Finance's daily research cycle (FIN-CR-004). */
+    finance?: { status: "ok" | "error"; snapshots?: number; jobs?: number; agreed?: number; noAgreement?: number; error?: string };
     draftStructuring: {
       status: "ok" | "error";
       structured?: number;
@@ -213,6 +216,16 @@ export async function runPlatformSweeps(): Promise<PlatformSweepsResult | { skip
     } catch (err) {
       recordSweepFailure("securityChecks", err);
       result.sweeps.securityChecks = { status: "error", error: err instanceof Error ? err.message : String(err) };
+    }
+
+    // 1c. Ziki Finance (FIN-CR-004): after the US close, snapshots and review jobs; from 05:00 ET, agreed views.
+    try {
+      const res = await sweepFinance(prisma);
+      recordSweepSuccess("finance");
+      result.sweeps.finance = { status: "ok", ...res };
+    } catch (err) {
+      recordSweepFailure("finance", err);
+      result.sweeps.finance = { status: "error", error: err instanceof Error ? err.message : String(err) };
     }
 
     // 2a. Deeper testing (#deeper-testing): rows past their day, proof escalations, the weekly line.
