@@ -70,3 +70,10 @@
 - **AFTER:** Prefixed IDs (`FIN-`, `INF-`) in every memory file and in the references in `docs/plans/*.md`. Lost infrastructure records rebuilt from the session that made them. Rules for concurrent work in `.project-memory/README.md`.
 - **Not recoverable:** the Finance session's original task list (only FIN-CR-002 survived; a "T-004 legal review" was referenced) and the text of FIN-R-001..FIN-R-005. Marked unknown.
 - **Verification:** no unprefixed record IDs remain in `.project-memory/` or `docs/plans/` (grep).
+
+## INF-CR-005 — Make the database and security-check routes work on Workers
+- **Date:** 2026-11-16 · **Approval:** APPROVED (user reported "api health still fails" after the deploy; fixing the deploy is within INF-CR-002's approved scope) · **Implementation:** COMPLETED · **Verification:** PENDING (CI on the PR, then `/api/health` after the deploy)
+- **BEFORE:** The second deploy (run 43812836444) went live, and the runtime secrets were uploaded, but `/api/health` returned 503 `{"status":"degraded"}`. The Worker logs (`wrangler tail`) showed two errors. (1) Every query failed with `prisma:error b2 is not a constructor`: webpack bundled `pg` with Node conditions, so `pg-cloudflare` resolved to its empty module and `new CloudflareSocket()` was undefined. (2) `lib/security-checks/ownership.ts` called `dns.Resolver.setServers` at import time, which Workers does not implement ("Not implemented"), so `/api/internal/cron` returned 500 on every run.
+- **AFTER:** `next.config.ts` adds `@prisma/adapter-pg` to `serverExternalPackages`, so OpenNext's bundler resolves `pg` with the `workerd` condition and includes the real socket. The public DNS resolver in `ownership.ts` is created on first use. The CI job "Cloudflare Workers build" now fails if `class CloudflareSocket` is missing from the bundle.
+- **Acceptance:** CI green; after the deploy, `/api/health` returns 200 and the cron log no longer shows "Not implemented".
+- **Files:** next.config.ts, lib/security-checks/ownership.ts, .github/workflows/ci.yml, package.json (0.1.205 → 0.1.206).
