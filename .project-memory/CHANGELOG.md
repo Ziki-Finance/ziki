@@ -138,3 +138,11 @@
 - **AFTER:** `next.config.ts` adds `@prisma/adapter-pg` to `serverExternalPackages`, so OpenNext's bundler resolves `pg` with the `workerd` condition and includes the real socket. The public DNS resolver in `ownership.ts` is created on first use. The CI job "Cloudflare Workers build" now fails if `class CloudflareSocket` is missing from the bundle.
 - **Acceptance:** CI green; after the deploy, `/api/health` returns 200 and the cron log no longer shows "Not implemented".
 - **Files:** next.config.ts, lib/security-checks/ownership.ts, .github/workflows/ci.yml, package.json (0.1.205 → 0.1.207; 0.1.206 is taken by the unmerged Finance commit FIN-CR-003).
+
+## INF-CR-006 — Track the project continuity protocol and load it from AGENTS.md
+- **Date:** 2026-11-16 · **Approval:** APPROVED (user: "track claude.md and fix then commit") · **Implementation:** COMPLETED · **Verification:** see below
+- **BEFORE:** `CLAUDE.md` (the project continuity protocol) was untracked, so it existed in one checkout only and no agent was told to read it. Every Markdown marker in it was backslash-escaped (`\#`, `\-`, `\*\*`), so it rendered as literal backslashes.
+- **AFTER:** `CLAUDE.md` is tracked and reads as normal Markdown (escapes removed, runs of blank lines collapsed). `AGENTS.md` points at it directly under the CONTRIBUTING.md line and says it applies in full, including that a harness may not load it on its own.
+- **Why:** continuity rules must reach every agent and every checkout, not just the one that created the file.
+- **Files:** `CLAUDE.md` (new), `AGENTS.md`.
+- **Verification:** no backslash-escaped markers remain in `CLAUDE.md` (grep); the wording is unchanged apart from the escaping and blank lines. No code, so no test run.

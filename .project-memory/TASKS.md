@@ -36,3 +36,4 @@
 | INF-T-005 | Decide on Supabase Row Level Security for tables in `public` (Data API exposure, INF-I-003) | Not started |
 | INF-T-006 | After the first deploy: upload runtime secrets (`node scripts/cloudflare/upload-secrets.mjs`), re-run the deploy, add the Google OAuth redirect URI | Not started |
 | INF-T-007 | Measure which routes exceed 10 ms CPU on Workers Free (INF-I-004) | Not started |
+| INF-T-008 | Track `CLAUDE.md` and link it from `AGENTS.md` (INF-CR-006) | Done 2026-11-16 |

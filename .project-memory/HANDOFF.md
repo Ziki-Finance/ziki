@@ -147,3 +147,14 @@ This section supersedes the Finance lines above (item 4 under OUTSTANDING ITEMS)
 - Another session works in the main checkout.
 
 **NEXT ACTION:** Get the user's "go ahead" on this plan, then start PR A on `feat/finance-step2b` with idea 19. Expected: staff can change the three numbers, and a settle uses them. Verify with `pnpm verify:ready` and by changing a number on `/superadmin/finance` on a test database.
+
+## FIN: Step 2b in progress (2026-11-16, supersedes the NEXT ACTION above)
+
+- **The user gave the "go ahead" on 2026-11-16** ("go ahead with 2b in its own worktree, its going to be in a new branch anyways"). PR A..D as planned above are authorised; idea 18 still needs the user's Finnhub key before PR B.
+- The user asked for the 2b work to live in a **new worktree and a new branch**, not in the existing `feat/finance-step2b` checkout:
+  - worktree `.claude/worktrees/finance-step2b-a`, branch `feat/finance-step2b-a`, based on `33d71335` (carries the step 2b docs).
+  - `node_modules` there is a junction to the main checkout's, as before. No `pnpm install` was run (disk: about 1.2 GB free).
+- The old worktree `.claude/worktrees/finance-step1` (branch `feat/finance-step2b`) still exists and is untouched.
+- Also in this branch: INF-CR-006, which tracks `CLAUDE.md` and points `AGENTS.md` at it.
+- **The main checkout** (`C:\Users\USER\Downloads\hng_zedu_egret\ziki-finance`) is on `fix/workers-db-socket` at `8b01a247`, 2 commits ahead and 30 behind `origin/main`, with uncommitted memory edits from an earlier session. Its `.project-memory/HANDOFF.md` has none of the Finance sections. Read this worktree's copy instead until that checkout is reconciled.
+- **NEXT ACTION:** implement PR A in `.claude/worktrees/finance-step2b-a` on `feat/finance-step2b-a`, starting with idea 19 (staff-set agreement numbers). Expected: `/superadmin/finance` edits the three numbers, each change audited, and a settle reads them.
