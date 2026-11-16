@@ -1,0 +1,77 @@
+name: Platform sweeps
+
+# INF-CR-006 / INF-D-006: runs the platform sweeps (lib/cron/runner.ts) every 5 minutes on
+# Node: offer, plan and review-offer expiry, stale claims, stakes, withdrawals, webhook
+# delivery, retention and the search index. Replaces the Worker's every-minute Cron
+# Trigger, which needed far more than the 10 ms of CPU Workers Free allows per run.
+#
+# GitHub may start scheduled runs a few minutes late. Every sweep is idempotent and
+# lease-guarded, so a late, skipped or overlapping run is safe.
+#
+# Secrets: the names in scripts/cron/sweep-secrets.json. Only DATABASE_URL is required;
+# set the rest with: node scripts/cron/set-github-sweep-secrets.mjs
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-sweeps
+  cancel-in-progress: false
+
+jobs:
+  sweeps:
+    if: github.repository == 'Ziki-Finance/ziki'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pass the sweep secrets that are set
+        env:
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const all = JSON.parse(process.env.ALL_SECRETS);
+            const { secrets } = JSON.parse(fs.readFileSync("scripts/cron/sweep-secrets.json", "utf8"));
+            if (!all.DATABASE_URL) { console.error("Missing repository secret DATABASE_URL."); process.exit(1); }
+            const lines = [];
+            const names = [];
+            for (const [secretName, envName] of Object.entries(secrets)) {
+              const value = all[secretName];
+              if (!value) continue;
+              const delimiter = "EOF_" + require("node:crypto").randomBytes(12).toString("hex");
+              lines.push(`${envName}<<${delimiter}`, value, delimiter);
+              names.push(envName);
+            }
+            fs.appendFileSync(process.env.GITHUB_ENV, lines.join("\n") + "\n");
+            console.log("Passing: " + names.join(", "));
+          '
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the sweeps
+        env:
+          NODE_ENV: production
+          AUTH_URL: ${{ vars.APP_URL }}
+          NEXTAUTH_URL: ${{ vars.APP_URL }}/api/auth
+        run: pnpm cron:sweeps
