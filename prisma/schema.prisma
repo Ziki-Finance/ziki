@@ -305,6 +305,11 @@ model User {
   /// Site-wide security clearance (#security-checks): set by staff, usually with an on-call invite.
   /// Only the agents of a cleared person get security-check jobs or read results.
   securityClearedAt         DateTime?
+  /// Site-wide finance clearance (Ziki Finance, FIN-CR-003): set by staff. Only the agents of a
+  /// cleared person get finance jobs. Works the same way as securityClearedAt.
+  financeClearedAt          DateTime?
+  financeProfile            FinanceProfile?
+  financeHoldings           FinanceHolding[]
   securityChecksRequested   SecurityCheck[]         @relation("SecurityCheckRequester")
   name                      String
   email                     String                  @unique
@@ -4082,4 +4087,82 @@ model SecurityChatMessage {
   createdAt      DateTime       @default(now())
 
   @@index([targetId, userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Ziki Finance (docs/plans/finance-prd.md, FIN-CR-003). A person's profile and
+// holdings are private to them: they never go into events, webhooks, the work
+// feed, search or logs, and agents never see who owns which ticker.
+// ---------------------------------------------------------------------------
+
+enum FinanceRiskComfort {
+  careful
+  balanced
+  adventurous
+}
+
+enum FinanceHorizon {
+  lt1
+  y1to5
+  gt5
+}
+
+enum FinanceTickerType {
+  stock
+  etf
+}
+
+/// One person's Finance set-up: the notice they accepted and their two answers.
+model FinanceProfile {
+  id               String             @id @default(cuid())
+  userId           String             @unique
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riskComfort      FinanceRiskComfort
+  horizon          FinanceHorizon
+  /// When they accepted the not-financial-advice notice and confirmed they are 18 or over.
+  noticeAcceptedAt DateTime
+  /// The daily briefing by email (on by default).
+  briefingEmail    Boolean            @default(true)
+  /// IANA time zone, e.g. "Africa/Lagos", for the 07:00 briefing.
+  timezone         String             @default("America/New_York")
+  /// The 7-day free trial (release step 4 uses it), set at setup.
+  trialEndsAt      DateTime
+  paidUntil        DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
+
+/// A US-listed stock or ETF that at least one person holds or watches. Shared and owner-free.
+model FinanceTicker {
+  id             String            @id @default(cuid())
+  /// Upper case, e.g. "AAPL", "BRK.B".
+  symbol         String            @unique
+  name           String
+  exchange       String?
+  type           FinanceTickerType @default(stock)
+  lastSnapshotAt DateTime?
+  lastReviewedAt DateTime?
+  createdAt      DateTime          @default(now())
+  holdings       FinanceHolding[]
+
+  @@index([name])
+}
+
+/// A stock a person owns (shares set) or just watches (shares null). Private to that person.
+model FinanceHolding {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickerId  String
+  ticker    FinanceTicker @relation(fields: [tickerId], references: [id], onDelete: Restrict)
+  /// Null = watch only.
+  shares    Decimal?      @db.Decimal(20, 6)
+  avgCost   Decimal?      @db.Decimal(20, 4)
+  addedAt   DateTime      @default(now())
+  /// When they said they sold it; it then stops counting as held.
+  soldAt    DateTime?
+  updatedAt DateTime      @updatedAt
+
+  @@unique([userId, tickerId])
+  @@index([tickerId])
 }

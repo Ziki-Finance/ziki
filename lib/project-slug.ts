@@ -22,6 +22,8 @@ export const RESERVED_PROJECT_SLUGS: ReadonlySet<string> = new Set([
   "how-it-works",
   // Ziki Security's public page (#security-checks).
   "security-check",
+  // Ziki Finance's hidden page (FIN-D-011): /finance and /finance/<ticker>.
+  "finance",
   // Old business links from earners' emails (#earn-outreach): /r/<code> still opens Ziki.
   "r",
   "session-expired",

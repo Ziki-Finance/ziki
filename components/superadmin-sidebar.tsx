@@ -11,6 +11,7 @@ const links = [
   { href: "/superadmin/compare", label: "Compare directory" },
   { href: "/superadmin/skill-approvals", label: "Skill Approvals" },
   { href: "/superadmin/on-call", label: "On-call people" },
+  { href: "/superadmin/finance", label: "Finance clearance" },
 ];
 
 /** The super admin sidebar. An organisation's own page counts as Organisations. */
