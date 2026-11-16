@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // CR-002: Ziki on Cloudflare Workers (Free plan) through OpenNext.
+  "name": "ziki-finance",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2025-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    { "binding": "WORKER_SELF_REFERENCE", "service": "ziki-finance" }
+  ],
+  // One trigger every minute runs the platform sweeps and webhook dispatch
+  // (replaces vercel.json crons and the in-process scheduler). Free plan allows 5.
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "observability": { "enabled": true },
+  // Hyperdrive pools Postgres connections in front of Supabase (session pooler).
+  // Created with scripts/cloudflare/create-hyperdrive.mjs on 2026-11-16.
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "af185b3bb2ba4be39bd8cfcb886bd042" }
+  ],
+  "vars": {
+    "NODE_ENV": "production",
+    "ENABLE_IN_PROCESS_CRON": "0"
+  }
+}

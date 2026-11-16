@@ -1,0 +1,48 @@
+# Decision register
+
+## Confirmed decisions (2026-11-16): approved by the user as the basis for the PRD draft (not yet approval to implement)
+Context: The Finance PRD needed answers to 10 open questions. The agent proposed defaults, and the user replied "Yes, you can draft the PRD using all of this." Approver: user (project owner). Related: CR-002, `docs/plans/finance-prd.md`.
+
+| ID | Decision | Alternatives considered | Reason / trade-off |
+| --- | --- | --- | --- |
+| D-012 | US-listed stocks and ETFs first | NGX, both | Best data availability; NGX deferred to v2 |
+| D-013 | Research framing + "not financial advice" notice; legal review is a launch blocker | Register / licensed partner | Fastest path; regulatory risk remains (Risk-001) |
+| D-003 | v1 never places trades | Broker execution | Avoids custody and broker-dealer exposure |
+| D-004 | Holdings entered by hand, plus watch-only | Read-only broker link | Simplest; broker link kept in the backlog |
+| D-005 | Only finance-cleared agents (`User.financeClearedAt`) | Any agent | Quality; mirrors security clearance |
+| D-006 | Agents paid per agreed view/verdict, plus an accuracy bonus and a track record | Per briefing; pure performance | Pays for work that is used; the track record rewards accuracy |
+| D-007 | 7-day free trial, then a monthly subscription in Ziks | Free; free first briefing | Uses the existing coins flow |
+| D-008 | Two-question risk profile (risk comfort, horizon) | None; long questionnaire | Minimal friction |
+| D-009 | Daily briefing at about 07:00 local, Mon–Fri, to Inbox + email | Other times/channels | Before US market open |
+| D-010 | Urgent triggers: ±8% day move, trading halt, earnings surprise ≥10%, agreed change to Sell; limit 1/holding/day, 3/person/day | More or fewer triggers | Keeps alerts rare and trusted |
+| D-011 | v1 Finance is a **hidden route**: `/finance` only, with no top-bar tab or any other link, noindex, open to anyone who knows the URL (sign-in still needed to save holdings) | Visible Finance tab next to Security | User decision 2026-11-16: keep v1 out of the main nav for now |
+
+## Design choices made in the PRD draft (recommendations awaiting PRD review)
+- R-006: Agents research per stock, not per person. Personal briefings are put together afterwards (privacy, cost, consistency).
+- R-007: Agreement threshold 3 weighted agrees (Sell change: 4), reusing `managerVoteWeight`.
+- R-008: Rename Settings → Finance (wallet) to Settings → Wallet. SUPERSEDED by D-011 (2026-11-16): dropped for v1 and moved to the backlog.
+- R-009: Ziki AI only writes up and selects agreed views. It never adds a view of its own.
+
+## Superseded
+- R-008 → dropped for v1 by D-011.
+- R-001..R-005 (2026-11-16 recommendations) → became D-003, D-013/R-002 (UX pattern adopted in PRD §5), D-004, R-007, D-009.
+
+## D-014 — Lighter password hash for the Workers Free plan
+- **Date:** 2026-11-16 · **Status:** Confirmed (user asked for it)
+- **Context:** bcryptjs cost 10 took about 240 ms of CPU on the dev laptop; the Workers Free limit is 10 ms per request. The user will not buy Workers Paid (I-004).
+- **Options:** (a) PBKDF2-SHA256 through Web Crypto, with a configurable iteration count and an optional server-side pepper; (b) Google sign-in only; (c) stay on bcrypt (fails on Free).
+- **Decision:** (a). New hashes use PBKDF2; old bcrypt hashes still verify and are upgraded on the next successful sign-in.
+- **Trade-off:** Fewer iterations than OWASP's guidance (600,000). If the database leaks, passwords are easier to crack offline. The pepper (`PASSWORD_PEPPER`, a Worker secret that is not stored in the database) offsets this when only the database leaks.
+- **Related:** CR-003.
+
+## D-015 — Non-Finance features may stay broken on Cloudflare
+- **Date:** 2026-11-16 · **Status:** Confirmed (user)
+- **Decision:** Only the Finance feature (docs/plans/finance-prd.md) must work on Cloudflare. Features that exceed the Free limits (for example the security report PDF) may be disabled rather than reworked.
+
+## D-016 — Deploy automatically from main through GitHub Actions
+- **Date:** 2026-11-16 · **Status:** Confirmed (user: "We cannot do manual deploy … it's going to be a collaboration")
+- **Context:** Several people will push code; deploys must not depend on one person's machine. The repo's `deploy.yml` called a Coolify webhook, but the repo `Ziki-Finance/ziki` has no Actions secrets, so that step could not deploy.
+- **Options:** (a) GitHub Actions running `wrangler deploy` after CI passes on main; (b) Cloudflare Workers Builds (connect the repo in the dashboard).
+- **Decision:** (a). It keeps the existing gates (CI green + Malware Scan) and runs `prisma migrate deploy` before the new code goes live.
+- **Consequences:** The Coolify deploy is removed, and so are staging deploys (no staging Worker exists). The repo needs secrets CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and DATABASE_URL, plus variable APP_URL. Runtime secrets stay in Cloudflare (`scripts/cloudflare/upload-secrets.mjs`, once). One manual bootstrap deploy creates the Worker and its URL.
+- **Related:** CR-002.

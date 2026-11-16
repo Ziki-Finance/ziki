@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Cloudflare Workers (CR-002): OpenNext patches this client to use the Postgres driver adapter.
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

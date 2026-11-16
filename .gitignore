@@ -60,4 +60,10 @@ next-env.d.ts
 # Saved test output. `pnpm verify:ready` and `pnpm test:cli` keep their logs
 # in node_modules/.cache instead, outside the inputs they hash.
 .test-output.txt
+
+# Cloudflare Workers build output and local secrets (CR-002)
+.open-next/
+.wrangler/
+.dev.vars
+cloudflare-env.d.ts
 .verify-output.txt
