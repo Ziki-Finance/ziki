@@ -1,5 +1,10 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // CR-002: Workers have no long-running process and no I/O outside a request.
+    // The every-minute Cron Trigger (cloudflare/worker.ts) runs the sweeps there instead.
+    const { isCloudflareWorkers } = await import("@/lib/runtime");
+    if (isCloudflareWorkers()) return;
+
     const { startPointsBackfill } = await import("@/lib/points/backfill-on-start");
     startPointsBackfill();
 

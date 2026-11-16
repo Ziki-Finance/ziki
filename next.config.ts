@@ -1,9 +1,15 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 import { BASE_PATH } from "./lib/base-path";
+
+// CR-002: set by `pnpm cf:build`. Swaps out code that can't run on Cloudflare Workers.
+const isCloudflareBuild = process.env.CLOUDFLARE_BUILD === "1";
 
 const nextConfig: NextConfig = {
   // #585: the production image ships only the traced standalone server.
   output: "standalone",
+  // CR-002: OpenNext for Cloudflare patches the generated Prisma client; keep it out of the server bundle.
+  serverExternalPackages: ["@prisma/client", ".prisma/client"],
   // CI type-checks every commit (`tsc --noEmit`) before it can deploy, so the
   // image build and the end-to-end job set SKIP_BUILD_TYPECHECK=1 to skip
   // next build's second, identical check. Every other build still runs it.
@@ -33,7 +39,9 @@ const nextConfig: NextConfig = {
     // The security report PDF embeds its own font (components/security-checks/report-pdf.tsx).
     // pdfkit loads its built-in font files (Helvetica.cjs and the like) by a path the tracer can't follow, so
     // the production image left them out and every download failed with "Cannot find module .../standard-fonts/Helvetica.cjs".
-    "/security/checks/[id]/report.pdf": ["./assets/fonts/**", "./node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/**"],
+    ...(isCloudflareBuild
+      ? {}
+      : { "/security/checks/[id]/report.pdf": ["./assets/fonts/**", "./node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/**"] }),
   },
   async headers() {
     // #222: the app previously sent no security headers at all, which left
@@ -149,6 +157,17 @@ const nextConfig: NextConfig = {
         "@/lib/points/backfill-on-start": false,
         "@/lib/cron/scheduler": false,
         "@/lib/error-capture": false,
+      };
+    }
+    if (isCloudflareBuild) {
+      // D-015: the security report PDF is not offered on Cloudflare (pdfkit can't be bundled for Workers).
+      const stub = path.join(process.cwd(), "cloudflare/stubs/report-pdf.ts");
+      config.resolve.alias = {
+        ...(typeof config.resolve.alias === "object" && !Array.isArray(config.resolve.alias)
+          ? config.resolve.alias
+          : {}),
+        "@/components/security-checks/report-pdf": stub,
+        [path.join(process.cwd(), "components/security-checks/report-pdf")]: stub,
       };
     }
     return config;

@@ -1,20 +1,23 @@
-name: Deploy (Coolify)
+name: Deploy (Cloudflare)
 
-# Runs only after the CI workflow finishes successfully on a push to main (production) or staging,
-# and verifies that Malware Scan (CI Gate) has also succeeded on the same commit.
-# Never deploys when either workflow fails or is skipped.
+# CR-002 / D-016: every push to main deploys to Cloudflare Workers, but only after the CI
+# workflow succeeds on that commit and Malware Scan (CI Gate) has succeeded too.
+# Never deploys when either fails or is skipped. Replaces the Coolify webhook deploy.
+#
+# Repository secrets:   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DATABASE_URL (Supabase session pooler, for migrations)
+# Repository variable:  APP_URL (the Worker's public URL, e.g. https://ziki-finance.<subdomain>.workers.dev)
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-    branches: [main, staging]
+    branches: [main]
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: deploy-${{ github.repository }}-${{ github.event.workflow_run.head_branch }}
+  group: deploy-${{ github.repository }}-main
   cancel-in-progress: false
 
 jobs:
@@ -23,7 +26,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Wait for Malware Scan (CI Gate)
         shell: bash
@@ -66,25 +69,69 @@ jobs:
             ELAPSED=$((ELAPSED + 10))
           done
 
-      - name: Trigger Coolify deployment
+      - name: Check deploy settings
         shell: bash
         env:
-          # main -> production app, staging -> staging app
-          COOLIFY_WEBHOOK_URL: ${{ github.event.workflow_run.head_branch == 'staging' && secrets.COOLIFY_STAGING_WEBHOOK_URL || secrets.COOLIFY_WEBHOOK_URL }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+          HAS_DB: ${{ secrets.DATABASE_URL != '' }}
+          APP_URL: ${{ vars.APP_URL }}
         run: |
-          set -uo pipefail
-          if [[ -z "${COOLIFY_WEBHOOK_URL:-}" ]]; then
-            echo "Coolify webhook URL secret is not set for ${{ github.event.workflow_run.head_branch }}"; exit 1
+          missing=()
+          [[ "$HAS_TOKEN" == "true" ]] || missing+=("secret CLOUDFLARE_API_TOKEN")
+          [[ "$HAS_ACCOUNT" == "true" ]] || missing+=("secret CLOUDFLARE_ACCOUNT_ID")
+          [[ "$HAS_DB" == "true" ]] || missing+=("secret DATABASE_URL")
+          [[ -n "$APP_URL" ]] || missing+=("variable APP_URL")
+          if (( ${#missing[@]} )); then
+            printf 'Missing repository settings: %s\n' "${missing[*]}"; exit 1
           fi
-          # Safe to log: scheme, host and path only (no query string, no token)
-          echo "Calling: ${COOLIFY_WEBHOOK_URL%%\?*}"
-          AUTH=()
-          if [[ -n "${COOLIFY_TOKEN:-}" ]]; then AUTH=(-H "Authorization: Bearer ${COOLIFY_TOKEN}"); fi
-          CODE=$(curl --silent --show-error --max-time 60 -X POST -o /tmp/resp.txt -w '%{http_code}'             "${AUTH[@]}" "${COOLIFY_WEBHOOK_URL}") || true
-          echo "HTTP status: ${CODE}"
-          cat /tmp/resp.txt; echo
-          if [[ "${CODE}" != 2* ]]; then
-            echo "Coolify did not accept the deploy request"; exit 1
-          fi
-          echo "Deployment triggered"
+
+      - name: Checkout the commit CI tested
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Migrations run before the new code goes live, so the code never meets an older schema.
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm exec prisma migrate deploy
+
+      - name: Build and deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Build-time only. The live Worker reads its real secrets from Cloudflare.
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+          AUTH_SECRET: "ci-build-secret-dummy-must-be-long-enough-32-chars"
+          # next.config.ts bakes NEXTAUTH_URL into the build.
+          NEXTAUTH_URL: ${{ vars.APP_URL }}/api/auth
+          NODE_OPTIONS: "--max-old-space-size=6144"
+        run: pnpm cf:deploy
+
+      - name: Check the deployed app answers
+        shell: bash
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            CODE=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 20 "$APP_URL/api/health" || true)
+            echo "Attempt $attempt: /api/health returned $CODE"
+            [[ "$CODE" == "200" ]] && exit 0
+            sleep 10
+          done
+          echo "The deployed app did not answer /api/health with 200"; exit 1
