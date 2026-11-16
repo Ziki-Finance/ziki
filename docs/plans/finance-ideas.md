@@ -213,3 +213,8 @@ Every idea uses the same parts:
 
 ## Step 5 — Private beta (a checklist, not an idea)
 Share `/finance` with 50–100 invited people. Measure the PRD section 11 metrics. Decide whether to show a Finance tab in the top bar. This happens only after the legal opinion is in.
+
+---
+
+## Step 2b — Fixes before step 3 (added 2026-11-16)
+Ideas 18–25 are in `docs/plans/finance-step2b-review.md` (FIN-CR-006, proposed). They come after step 2 and before step 3.
