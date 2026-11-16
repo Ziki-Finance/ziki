@@ -28,6 +28,8 @@
 | FIN-T-016 | Idea 22: "Just watch instead" in setup (FIN-CR-006 PR A) | Done 2026-11-16 on `feat/finance-step2b-a`; lint and typecheck green, unit 2235/2236 (one load timeout, unrelated) |
 | FIN-T-017 | Idea 24: briefing window 07:00–09:59 local (FIN-CR-006 PR A) | Done 2026-11-16 on `feat/finance-step2b-a`; lint and typecheck green, unit 2235/2236 (one load timeout, unrelated) |
 | FIN-T-018 | Idea 27 part 1: no "More"/average price in setup and "+ Add" (FIN-CR-006 PR A) | Done 2026-11-16 on `feat/finance-step2b-a`; lint and typecheck green, unit 2235/2236 (one load timeout, unrelated) |
+| FIN-T-019 | Idea 18: Finnhub market data; idea 21: overall/market lines; idea 27 parts 2–3: profit layers (FIN-CR-006 PR B) | Done 2026-11-16 on `feat/finance-step2b-b`; found broken and fixed (see CHANGELOG); lint and typecheck green standalone, `tests/finance` 107/107; full `pnpm verify:ready` not completed on this box (resource-constrained) |
+| FIN-T-020 | Get a Finnhub key into this repo's `.env` (idea 18) and confirm search/quote/news work for real | Not started; needs the user's existing key, never in chat |
 
 # INF: Infrastructure and deployment
 
