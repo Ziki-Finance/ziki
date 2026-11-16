@@ -108,6 +108,19 @@ export function isSetUp(profile: { noticeAcceptedAt: Date | null } | null): bool
   return Boolean(profile?.noticeAcceptedAt);
 }
 
+/** The agents' view as a chip: "Keep" for a stock you own, "Buy" for one you watch. */
+export function callLabel(call: "buy_keep" | "consider_selling" | "sell", owned: boolean): string {
+  if (call === "buy_keep") return owned ? "Keep" : "Buy";
+  return call === "sell" ? "Sell" : "Consider selling";
+}
+
+export const RISK_LEVEL_LABEL: Record<"low" | "medium" | "high", string> = { low: "Low", medium: "Medium", high: "High" };
+
+/** "4 of 5 agents agree". */
+export function agreementWords(view: { agentsAgree: number; agentsTotal: number }): string {
+  return `${view.agentsAgree} of ${view.agentsTotal} agents agree`;
+}
+
 /** Site-wide finance clearance (FIN-D-005), like `isSecurityCleared`. */
 export function isFinanceCleared(person: { financeClearedAt: Date | null }): boolean {
   return person.financeClearedAt !== null;
