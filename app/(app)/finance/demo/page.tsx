@@ -19,6 +19,8 @@ const heading = "text-xs font-semibold uppercase tracking-wider text-zk-muted";
 const today: BriefingContent = {
   date: "2026-11-17",
   dateWords: "Tue 17 Nov",
+  overall: "Overall: your holdings rose 1.2% yesterday (S&P 500: +0.8%).",
+  market: "The wider market rose 0.8%, led by technology shares.",
   needsLook: [
     {
       symbol: "ACME",
@@ -91,6 +93,8 @@ const yesterday: BriefingContent = {
   ...today,
   date: "2026-11-16",
   dateWords: "Mon 16 Nov",
+  overall: "Overall: your holdings rose 0.4% yesterday (S&P 500: +0.2%).",
+  market: "The wider market was little changed.",
   waiting: [],
 };
 
@@ -125,7 +129,6 @@ export default function FinanceDemoPage() {
         <h2 id="briefing-heading" className={heading}>
           Today&apos;s briefing
         </h2>
-        <p className="text-sm text-zk-text2">Overall: your holdings rose 1.2% yesterday (S&amp;P 500: +0.8%).</p>
         <BriefingView content={today} />
       </section>
 
