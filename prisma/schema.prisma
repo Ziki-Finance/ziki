@@ -310,6 +310,7 @@ model User {
   financeClearedAt          DateTime?
   financeProfile            FinanceProfile?
   financeHoldings           FinanceHolding[]
+  financeBriefings          FinanceBriefing[]
   securityChecksRequested   SecurityCheck[]         @relation("SecurityCheckRequester")
   name                      String
   email                     String                  @unique
@@ -4326,4 +4327,30 @@ model FinanceCycle {
   doneAt DateTime @default(now())
 
   @@unique([date, step])
+}
+
+// Ziki Finance release step 2 (FIN-CR-005): the daily briefing.
+
+/// One person's briefing for one local day, put together by code from agreed views only
+/// (FIN-D-018). Kept unchanged for audit (PRD §10). Private to that person.
+model FinanceBriefing {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The person's local date, "YYYY-MM-DD".
+  date      String
+  /// The briefing's sections (lib/finance/briefing.ts `BriefingContent`).
+  content   Json
+  /// One line for the inbox and the past-briefings list.
+  headline  String
+  /// Something needs a look.
+  needsLook Boolean  @default(false)
+  /// Whether it had anything to say; an empty one is kept but not sent.
+  hasViews  Boolean  @default(false)
+  inboxAt   DateTime?
+  emailedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId, createdAt])
 }
