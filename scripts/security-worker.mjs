@@ -175,11 +175,11 @@ export function spawnClaude(args, { command = process.env.ZIKI_WORKER_CLAUDE || 
 }
 
 /** Runs Claude Code headless in a scratch folder (the prompt on stdin) and returns its final text. */
-export async function runClaude(prompt, { command = process.env.ZIKI_WORKER_CLAUDE || "claude", model = process.env.ZIKI_WORKER_MODEL || "sonnet", maxTurns = "25", timeoutMs = JOB_TIMEOUT_MS } = {}) {
+export async function runClaude(prompt, { command = process.env.ZIKI_WORKER_CLAUDE || "claude", model = process.env.ZIKI_WORKER_MODEL || "sonnet", maxTurns = "25", timeoutMs = JOB_TIMEOUT_MS, allowedTools = ALLOWED_TOOLS } = {}) {
   const dir = await mkdtemp(path.join(os.tmpdir(), "ziki-job-"));
   try {
     return await new Promise((resolve, reject) => {
-      const args = ["-p", "--output-format", "json", "--model", model, "--max-turns", maxTurns, "--allowedTools", ALLOWED_TOOLS];
+      const args = ["-p", "--output-format", "json", "--model", model, "--max-turns", maxTurns, "--allowedTools", allowedTools];
       const child = spawnClaude(args, { command, cwd: dir });
       let out = "";
       let err = "";
