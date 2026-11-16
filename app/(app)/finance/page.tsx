@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { optionalUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { RISK_LEVEL_LABEL, agreementWords, normalizeSymbol, profileWords, sharesWords, tickerPath } from "@/lib/finance";
+import { RISK_LEVEL_LABEL, agreementWords, normalizeSymbol, profileWords, sharesWords, signedPercent, tickerPath } from "@/lib/finance";
 import { getProfile, listHoldings } from "@/lib/finance/holdings";
 import { currentViews } from "@/lib/finance/research";
+import { changeSince, lastClose, latestChanges, recentBars } from "@/lib/finance/prices";
 import { dateWords, pastBriefings, previewBriefing, type BriefingContent } from "@/lib/finance/briefing";
 import { holidayName, zonedParts } from "@/lib/finance/calendar";
 import { ideasFor } from "@/lib/finance/ideas";
@@ -14,6 +15,7 @@ import { FinanceFooter } from "@/components/finance/finance-footer";
 import { FinanceSetup } from "@/components/finance/finance-setup";
 import { FinanceWelcome } from "@/components/finance/finance-welcome";
 import { AddHoldingForm, FinanceProfileMenu } from "@/components/finance/holding-forms";
+import { Sparkline } from "@/components/finance/sparkline";
 import { ViewChip } from "@/components/finance/view-chip";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +51,12 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
 
   const holdings = await listHoldings(prisma, user.id);
   // Only agreed views ever reach a person (PRD §7.3), never one agent's opinion.
-  const views = await currentViews(prisma, holdings.map((h) => h.ticker.id));
+  const tickerIds = holdings.map((h) => h.ticker.id);
+  const [views, changes, bars] = await Promise.all([
+    currentViews(prisma, tickerIds),
+    latestChanges(prisma, tickerIds),
+    recentBars(prisma, tickerIds),
+  ]);
   const person = { userId: user.id, riskComfort: profile.riskComfort, horizon: profile.horizon, timezone: profile.timezone };
   const [ideas, past, preview] = await Promise.all([ideasFor(prisma, person), pastBriefings(prisma, user.id), previewBriefing(prisma, person)]);
   // Today's stored briefing when it has been sent; otherwise the same briefing worked out now, so a
@@ -104,15 +111,33 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
               <tbody>
                 {holdings.map((h) => {
                   const view = views.get(h.ticker.id);
+                  const today = changes.get(h.ticker.id) ?? null;
+                  // The close when they added it, so the line needs nothing from them (idea 27, layer 1).
+                  const sinceAdded = h.addedPrice === null ? null : changeSince(lastClose(bars, h.ticker.id), Number(h.addedPrice));
+                  const sparkline = (bars.get(h.ticker.id) ?? []).map((bar) => bar.close);
                   return (
                   <tr key={h.id} className="border-b border-dashed border-zk-border last:border-0">
                     <td className="py-2 pr-2">
                       <Link href={tickerPath(h.ticker.symbol)} className="hover:underline">
                         <span className="font-mono font-semibold text-zk-text">{h.ticker.symbol}</span> <span className="text-zk-text2">{h.ticker.name}</span>
                       </Link>
+                      {sinceAdded !== null ? (
+                        <span className={`block text-xs ${sinceAdded >= 0 ? "text-zk-text2" : "text-zk-bad-fg"}`}>
+                          {sinceAdded >= 0 ? "Up" : "Down"} {Math.abs(sinceAdded).toFixed(1)}% since you added it
+                        </span>
+                      ) : null}
                     </td>
                     <td className="py-2 pr-2 text-zk-text2">{sharesWords(h.shares)}</td>
-                    <td className="py-2 pr-2 text-zk-muted">—</td>
+                    <td className="py-2 pr-2">
+                      {today === null ? (
+                        <span className="text-zk-muted">—</span>
+                      ) : (
+                        <span className={`flex items-center gap-2 ${today >= 0 ? "text-zk-text" : "text-zk-bad-fg"}`}>
+                          <span>{signedPercent(today)}</span>
+                          <Sparkline values={sparkline} label={`${h.ticker.symbol} over the last 30 days`} />
+                        </span>
+                      )}
+                    </td>
                     <td className="py-2">
                       {view ? (
                         <span className="flex flex-col gap-0.5">

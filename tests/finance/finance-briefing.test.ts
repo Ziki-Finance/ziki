@@ -5,7 +5,7 @@ vi.mock("@/lib/mail", () => ({ canSendMail: () => true, sendMail: (...args: unkn
 vi.mock("@/lib/cache-tags", () => ({ expireUnreadCounts: vi.fn() }));
 vi.mock("@/lib/site-url", () => ({ absoluteUrl: (p: string) => `https://ziki.test${p}` }));
 
-import { briefingText, composeBriefing, dateWords, isBriefingTime, sweepBriefings, type BriefingHolding } from "@/lib/finance/briefing";
+import { briefingText, composeBriefing, dateWords, isBriefingTime, marketLine, overallLine, sweepBriefings, type BriefingHolding } from "@/lib/finance/briefing";
 import type { CurrentView } from "@/lib/finance/research";
 
 const view = (call: CurrentView["call"], reason: string, agree = 4, total = 5): CurrentView => ({
@@ -22,10 +22,10 @@ const view = (call: CurrentView["call"], reason: string, agree = 4, total = 5): 
 });
 const profile = { riskComfort: "balanced" as const, horizon: "gt5" as const };
 const holdings: BriefingHolding[] = [
-  { tickerId: "t1", symbol: "ACME", name: "Acme Corp", owned: true },
-  { tickerId: "t2", symbol: "CTSO", name: "Contoso", owned: true },
-  { tickerId: "t3", symbol: "NWND", name: "Northwind", owned: false },
-  { tickerId: "t4", symbol: "NEWW", name: "Newco", owned: true },
+  { tickerId: "t1", symbol: "ACME", name: "Acme Corp", owned: true, shares: 12 },
+  { tickerId: "t2", symbol: "CTSO", name: "Contoso", owned: true, shares: 5 },
+  { tickerId: "t3", symbol: "NWND", name: "Northwind", owned: false, shares: null },
+  { tickerId: "t4", symbol: "NEWW", name: "Newco", owned: true, shares: 1 },
 ];
 const views = new Map([
   ["t1", view("consider_selling", "Sales fell for the second quarter.")],
@@ -74,6 +74,36 @@ describe("composing the briefing (idea 10)", () => {
   });
 });
 
+describe("the opening and closing lines (idea 21)", () => {
+  it("says what happened, never what to do, and names the S&P 500's move when it's known", () => {
+    expect(overallLine(1.2, 0.8)).toBe("Overall: your holdings rose 1.2% yesterday (S&P 500: +0.8%)");
+    expect(overallLine(-0.9, -1.4)).toBe("Overall: your holdings fell 0.9% yesterday (S&P 500: -1.4%)");
+    expect(overallLine(1.2, null)).toBe("Overall: your holdings rose 1.2% yesterday");
+    expect(overallLine(null, 0.8)).toBeNull();
+  });
+
+  it("describes the market in one plain sentence, or leaves it out", () => {
+    expect(marketLine(1.6)).toBe("The market was up yesterday: the S&P 500 rose 1.6%.");
+    expect(marketLine(-2.3)).toBe("The market was down yesterday: the S&P 500 fell 2.3%.");
+    expect(marketLine(0.01)).toBe("The market barely moved yesterday: the S&P 500 ended about where it started.");
+    expect(marketLine(null)).toBeNull();
+  });
+
+  it("includes both lines in the briefing when both moves are known, and leaves them out otherwise", () => {
+    const withPrices = composeBriefing("2026-11-17", holdings, views, null, profile, { holdingsPct: 1.2, marketPct: 0.8 });
+    expect(withPrices.content.overall).toBe("Overall: your holdings rose 1.2% yesterday (S&P 500: +0.8%)");
+    expect(withPrices.content.market).toBe("The market was up yesterday: the S&P 500 rose 0.8%.");
+    const text = briefingText(withPrices.content);
+    expect(text.indexOf("Overall:")).toBeLessThan(text.indexOf("Needs a look"));
+    expect(text.indexOf("The market was up")).toBeGreaterThan(text.indexOf("Needs a look"));
+
+    const noPrices = composeBriefing("2026-11-17", holdings, views, null, profile);
+    expect(noPrices.content.overall).toBeNull();
+    expect(noPrices.content.market).toBeNull();
+    expect(briefingText(noPrices.content)).not.toMatch(/Overall:|The market/);
+  });
+});
+
 describe("delivery at 07:00 local, Monday to Friday (idea 11)", () => {
   it("is due from 07:00 to 09:59 on a weekday that isn't a US market holiday", () => {
     expect(isBriefingTime(new Date("2026-11-17T06:30:00Z"), "Africa/Lagos")).toEqual({ due: true, date: "2026-11-17" }); // Tue 07:30 in Lagos
@@ -95,6 +125,9 @@ describe("delivery at 07:00 local, Monday to Friday (idea 11)", () => {
       financeJob: { findMany: vi.fn().mockResolvedValue([]) },
       financeBriefing: { createMany: vi.fn().mockResolvedValue({ count: 1 }), updateMany: vi.fn() },
       notification: { create: vi.fn() },
+      // No market ticker yet, and no snapshots: the overall and market lines are simply left out (idea 21).
+      financeTicker: { findUnique: vi.fn().mockResolvedValue(null) },
+      financeSnapshot: { findMany: vi.fn().mockResolvedValue([]) },
     };
   }
   beforeEach(() => sendMail.mockReset());
@@ -117,6 +150,30 @@ describe("delivery at 07:00 local, Monday to Friday (idea 11)", () => {
     expect(db.financeBriefing.createMany.mock.calls[0][0]).toMatchObject({ data: [{ userId: "u1", date: "2026-11-17", headline: "Nothing needs your attention today" }], skipDuplicates: true });
     expect(db.notification.create.mock.calls[0][0].data).toMatchObject({ userId: "u1", kind: "finance_briefing", url: "/finance" });
     expect(sendMail.mock.calls[0][0]).toMatchObject({ to: "ada@example.com", subject: "Your Ziki Finance briefing: Nothing needs your attention today" });
+  });
+
+  it("includes the overall and market lines when the recorded closes give both (idea 21)", async () => {
+    const db = fakeDb();
+    db.financeProfile.findMany
+      .mockResolvedValueOnce([{ timezone: "Africa/Lagos" }])
+      .mockResolvedValueOnce([{ userId: "u1", riskComfort: "balanced", horizon: "gt5", timezone: "Africa/Lagos", briefingEmail: true, user: { email: "ada@example.com" } }]);
+    db.financeAgreedView.findMany.mockImplementation(async (args: { where?: { tickerId?: unknown } }) =>
+      args.where?.tickerId
+        ? [{ tickerId: "t2", agreedAt: new Date(), agentsAgree: 4, agentsTotal: 4, divided: false, view: { call: "buy_keep", risk: "low", reasons: ["Earns steadily."], changeMind: "x", sources: ["https://x"] } }]
+        : [],
+    );
+    db.financeTicker.findUnique.mockResolvedValue({ id: "spy1" });
+    db.financeSnapshot.findMany.mockResolvedValue([
+      { tickerId: "t2", date: "2026-11-15", close: 100 },
+      { tickerId: "t2", date: "2026-11-16", close: 102 },
+      { tickerId: "spy1", date: "2026-11-15", close: 500 },
+      { tickerId: "spy1", date: "2026-11-16", close: 495 },
+    ]);
+    await sweepBriefings(db as never, new Date("2026-11-17T06:30:00Z"));
+    const content = db.financeBriefing.createMany.mock.calls[0][0].data[0].content;
+    expect(content.overall).toBe("Overall: your holdings rose 2.0% yesterday (S&P 500: -1.0%)");
+    expect(content.market).toBe("The market was down yesterday: the S&P 500 fell 1.0%.");
+    expect(sendMail.mock.calls[0][0].text).toContain("Overall: your holdings rose 2.0%");
   });
 
   it("keeps an empty briefing but sends nothing, and skips email when it's off", async () => {

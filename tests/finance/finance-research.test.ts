@@ -1,11 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
-import { dueReason, giveVerdict, listJobsForAgent, listOpenViews, postView, settleJob, sweepFinance, tickerRecord } from "@/lib/finance/research";
+import { MARKET_SYMBOL, dueReason, giveVerdict, listJobsForAgent, listOpenViews, postView, settleJob, sweepFinance, takeMarketSnapshot, tickerRecord } from "@/lib/finance/research";
 
 /** A fake Prisma client: every model method used here is a mock; $transaction runs on the same fake. */
 function fakeDb() {
   const db = {
-    financeTicker: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), update: vi.fn() },
+    financeTicker: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn().mockResolvedValue({ id: "spy" }) },
     financeSnapshot: { createMany: vi.fn(), findUnique: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
     financeJob: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), createMany: vi.fn().mockResolvedValue({ count: 1 }), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     financeView: { create: vi.fn(), findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
@@ -55,6 +55,17 @@ describe("the daily cycle", () => {
     expect(db.financeTicker.findMany.mock.calls[0][0].where).toMatchObject({ holdings: { some: { soldAt: null } }, snapshots: { none: { date: "2026-11-16" } } });
     expect(db.financeJob.createMany.mock.calls[0][0].data).toEqual([{ tickerId: "t1", date: "2026-11-16", reason: "first" }]);
     expect(db.financeCycle.createMany.mock.calls[0][0].data).toEqual([{ date: "2026-11-16", step: "jobs" }]);
+    // Once every tracked ticker has a snapshot for the day, the market's own move is recorded too (idea 21).
+    expect(db.financeTicker.upsert.mock.calls[0][0].where).toEqual({ symbol: MARKET_SYMBOL });
+    expect(db.financeSnapshot.createMany.mock.calls[1][0].data[0]).toMatchObject({ tickerId: "spy", date: "2026-11-16" });
+  });
+
+  it("does not snapshot the market until the evening's own tickers are all done", async () => {
+    const db = fakeDb();
+    db.financeCycle.findUnique.mockImplementation(({ where }: { where: { date_step: { step: string } } }) => (where.date_step.step === "settle" ? { id: "c" } : null));
+    db.financeTicker.findMany.mockResolvedValueOnce(Array.from({ length: 26 }, (_, i) => ({ id: `t${i}`, symbol: `T${i}`, lastSnapshotAt: null, lastReviewedAt: null })));
+    await sweepFinance(asDb(db), new Date("2026-11-16T21:31:00Z")); // 16:31 ET, 26 tickers > the 25-per-minute limit
+    expect(db.financeTicker.upsert).not.toHaveBeenCalled();
   });
 
   it("opens no jobs on a market holiday", async () => {
@@ -70,6 +81,20 @@ describe("the daily cycle", () => {
     await sweepFinance(asDb(db), new Date("2026-11-17T10:01:00Z")); // Tue 05:01 ET
     expect(db.financeJob.findMany.mock.calls[0][0].where).toEqual({ status: "open", date: { lt: "2026-11-17" } });
     expect(db.financeCycle.createMany.mock.calls[0][0].data).toEqual([{ date: "2026-11-17", step: "settle" }]);
+  });
+});
+
+describe("the market's own snapshot (idea 21)", () => {
+  it("records SPY as a proxy for the S&P 500, with no price when the provider has none", async () => {
+    const db = fakeDb();
+    db.financeTicker.upsert.mockResolvedValue({ id: "spy1" });
+    await takeMarketSnapshot(asDb(db), "2026-11-16", now);
+    expect(db.financeTicker.upsert.mock.calls[0][0]).toMatchObject({ where: { symbol: "SPY" } });
+    expect(db.financeSnapshot.createMany.mock.calls[0][0]).toEqual({
+      data: [{ tickerId: "spy1", date: "2026-11-16", close: null, changePct: null, headlines: [] }],
+      skipDuplicates: true,
+    });
+    expect(db.financeTicker.update.mock.calls[0][0]).toEqual({ where: { id: "spy1" }, data: { lastSnapshotAt: now } });
   });
 });
 

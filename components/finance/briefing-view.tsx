@@ -24,6 +24,7 @@ export function BriefingView({ content }: { content: BriefingContent }) {
   return (
     <div className="space-y-4 text-sm">
       <p className="font-semibold text-zk-text">Good morning. Here&apos;s your portfolio for {content.dateWords}.</p>
+      {content.overall ? <p className="text-zk-text">{content.overall}</p> : null}
       {content.needsLook.length > 0 ? (
         <div className="space-y-2">
           <p className="font-semibold text-zk-text">Needs a look ({content.needsLook.length})</p>
@@ -61,6 +62,7 @@ export function BriefingView({ content }: { content: BriefingContent }) {
         </div>
       ) : null}
       {content.waiting.length > 0 ? <p className="text-xs text-zk-muted">Still being reviewed: {content.waiting.map((w) => w.symbol).join(", ")}.</p> : null}
+      {content.market ? <p className="text-zk-text2">{content.market}</p> : null}
     </div>
   );
 }

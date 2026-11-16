@@ -31,6 +31,7 @@ const KEYS = [
   "SMTP_USER",
   "SMTP_PASSWORD",
   "SMTP_FROM",
+  "FINNHUB_API_KEY",
 ];
 
 const env = readEnvFile();

@@ -6,7 +6,7 @@ import { requireSuperAdmin, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { FINANCE_PATH, HORIZONS, RISK_COMFORTS, normalizeSymbol, parseAvgCost, parseShares, safeTimezone } from "@/lib/finance";
 import { FinanceClearanceError, grantFinanceClearance, removeFinanceClearance } from "@/lib/finance/clearance";
-import { FinanceError, addHolding, markSold, saveProfile, setBriefingEmail, stopWatching, updateShares } from "@/lib/finance/holdings";
+import { FinanceError, addHolding, markSold, saveProfile, setBriefingEmail, setPaidFromDate, setPaidPrice, stopWatching, updateShares } from "@/lib/finance/holdings";
 import { marketData, type TickerMatch } from "@/lib/finance/market-data";
 import { parseFinanceSettings, saveFinanceSettings } from "@/lib/finance/settings";
 
@@ -37,19 +37,16 @@ export async function setUpFinanceAction(_prev: FinanceActionResult, formData: F
   if (!(RISK_COMFORTS as readonly string[]).includes(riskComfort)) return { error: "Pick how you feel about risk." };
   if (!(HORIZONS as readonly string[]).includes(horizon)) return { error: "Pick when you might need this money." };
 
-  // Stocks come as parallel lists: symbol[i], shares[i], avgCost[i].
+  // Stocks come as parallel lists: symbol[i], shares[i].
   const symbols = formData.getAll("symbol").map(String);
   const shares = formData.getAll("shares").map(String);
-  const costs = formData.getAll("avgCost").map(String);
-  const stocks: { symbol: string; shares: number | null; avgCost: number | null }[] = [];
+  const stocks: { symbol: string; shares: number | null }[] = [];
   for (let i = 0; i < Math.min(symbols.length, 50); i++) {
     const symbol = normalizeSymbol(symbols[i] ?? "");
     if (!symbol) continue;
     const s = parseShares(shares[i]);
     if (!s.ok) return { error: `${symbol}: ${s.error}` };
-    const c = parseAvgCost(costs[i]);
-    if (!c.ok) return { error: `${symbol}: ${c.error}` };
-    stocks.push({ symbol, shares: s.shares, avgCost: c.price });
+    stocks.push({ symbol, shares: s.shares });
   }
 
   try {
@@ -96,10 +93,8 @@ export async function addHoldingAction(_prev: FinanceActionResult, formData: For
   if (!symbol) return { error: "Type a ticker like AAPL, or pick a company from the list." };
   const s = parseShares(field(formData, "shares"));
   if (!s.ok) return { error: s.error };
-  const c = parseAvgCost(field(formData, "avgCost"));
-  if (!c.ok) return { error: c.error };
   try {
-    await addHolding(prisma, user.id, { symbol, shares: s.shares, avgCost: c.price });
+    await addHolding(prisma, user.id, { symbol, shares: s.shares });
   } catch (error) {
     if (error instanceof FinanceError) return { error: error.message };
     throw error;
@@ -112,10 +107,36 @@ export async function editSharesAction(_prev: FinanceActionResult, formData: For
   const user = await requireUser();
   const s = parseShares(field(formData, "shares"));
   if (!s.ok) return { error: s.error };
+  try {
+    await updateShares(prisma, user.id, field(formData, "holdingId"), s.shares);
+  } catch (error) {
+    if (error instanceof FinanceError) return { error: error.message };
+    throw error;
+  }
+  revalidatePath(FINANCE_PATH, "layout");
+  return { ok: true };
+}
+
+/** What they paid per share, typed by them (idea 27, layer 2). Empty clears it. */
+export async function setPaidPriceAction(_prev: FinanceActionResult, formData: FormData): Promise<FinanceActionResult> {
+  const user = await requireUser();
   const c = parseAvgCost(field(formData, "avgCost"));
   if (!c.ok) return { error: c.error };
   try {
-    await updateShares(prisma, user.id, field(formData, "holdingId"), s.shares, c.price);
+    await setPaidPrice(prisma, user.id, field(formData, "holdingId"), c.price);
+  } catch (error) {
+    if (error instanceof FinanceError) return { error: error.message };
+    throw error;
+  }
+  revalidatePath(FINANCE_PATH, "layout");
+  return { ok: true };
+}
+
+/** The date they bought it, taking the close we recorded that day (idea 27, layer 3). */
+export async function setPaidFromDateAction(_prev: FinanceActionResult, formData: FormData): Promise<FinanceActionResult> {
+  const user = await requireUser();
+  try {
+    await setPaidFromDate(prisma, user.id, field(formData, "holdingId"), field(formData, "boughtOn"));
   } catch (error) {
     if (error instanceof FinanceError) return { error: error.message };
     throw error;
