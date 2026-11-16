@@ -41,6 +41,7 @@ This section supersedes the Finance lines above (item 4 under OUTSTANDING ITEMS)
   | 2 | `feat/finance-step2-briefing` | see PR list | step 1 branch |
 
   CI only runs for PRs into `main`. After #3 merges, retarget #5 to `main`; after #5 merges, retarget the step 2 PR.
+- **What actually happened (2026-11-16):** #3 merged into `main` (`015ad8c`). #5 was then merged into its old base, the step 0 branch (`645abc3`), so step 1 did not reach `main`. PR #6 (step 2 branch, which contains all of step 1) was retargeted to `main` and retitled "release steps 1 and 2". Merging #6 brings steps 1 and 2 into `main`. Nothing was lost; the branches `feat/finance-step0-foundations` and `feat/finance-step1-research` can be deleted after #6 merges.
 - Not started: steps 3–5 (alerts, money, beta), still PROPOSED. Legal opinion (FIN-T-004), data provider (FIN-T-006).
 
 **LATEST DECISIONS:**
