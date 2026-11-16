@@ -119,6 +119,13 @@ jobs:
       - name: Build for Cloudflare Workers
         run: pnpm cf:build
 
+      # INF-CR-005: without pg's Workers socket in the bundle, every database query fails on Cloudflare.
+      - name: Check the Worker can reach the database
+        run: |
+          if ! grep -rqs "class CloudflareSocket" .open-next/server-functions/default; then
+            echo "pg-cloudflare's CloudflareSocket is missing from the Worker bundle: database queries would fail on Workers."; exit 1
+          fi
+
       - name: Report the Worker bundle size
         run: du -sh .open-next/worker.js .open-next/server-functions/default .open-next/assets || true
 

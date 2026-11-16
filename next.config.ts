@@ -9,7 +9,10 @@ const nextConfig: NextConfig = {
   // #585: the production image ships only the traced standalone server.
   output: "standalone",
   // CR-002: OpenNext for Cloudflare patches the generated Prisma client; keep it out of the server bundle.
-  serverExternalPackages: ["@prisma/client", ".prisma/client"],
+  // @prisma/adapter-pg stays out of webpack so the Cloudflare bundler resolves its `pg`
+  // with the `workerd` condition. Bundled by webpack, pg-cloudflare resolves to an empty
+  // module and every query fails on Workers with "is not a constructor" (INF-CR-005).
+  serverExternalPackages: ["@prisma/client", ".prisma/client", "@prisma/adapter-pg"],
   // CI type-checks every commit (`tsc --noEmit`) before it can deploy, so the
   // image build and the end-to-end job set SKIP_BUILD_TYPECHECK=1 to skip
   // next build's second, identical check. Every other build still runs it.
