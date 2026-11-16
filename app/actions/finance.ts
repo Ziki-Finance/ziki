@@ -8,6 +8,7 @@ import { FINANCE_PATH, HORIZONS, RISK_COMFORTS, normalizeSymbol, parseAvgCost, p
 import { FinanceClearanceError, grantFinanceClearance, removeFinanceClearance } from "@/lib/finance/clearance";
 import { FinanceError, addHolding, markSold, saveProfile, setBriefingEmail, stopWatching, updateShares } from "@/lib/finance/holdings";
 import { marketData, type TickerMatch } from "@/lib/finance/market-data";
+import { parseFinanceSettings, saveFinanceSettings } from "@/lib/finance/settings";
 
 /**
  * Ziki Finance actions (FIN-CR-003). Every action that touches holdings needs a
@@ -164,5 +165,19 @@ export async function removeFinanceClearanceAction(formData: FormData): Promise<
   await requireSuperAdmin();
   await removeFinanceClearance(prisma, field(formData, "userId"));
   revalidatePath(CLEARANCE_PAGE);
+}
+
+/** Staff set the agreement numbers (idea 19, FIN-D-022). A change applies from the next settle. */
+export async function saveFinanceSettingsAction(formData: FormData): Promise<void> {
+  const user = await requireSuperAdmin();
+  const parsed = parseFinanceSettings({
+    agreementNeeded: field(formData, "agreementNeeded"),
+    managerVoteWeight: field(formData, "managerVoteWeight"),
+    sellAgreementNeeded: field(formData, "sellAgreementNeeded"),
+  });
+  if (!parsed.ok) redirect(`${CLEARANCE_PAGE}?error=${parsed.error}#agreement`);
+  const result = await saveFinanceSettings(prisma, parsed.values, user.id);
+  revalidatePath(CLEARANCE_PAGE);
+  redirect(`${CLEARANCE_PAGE}?saved=${result.changed ? "1" : "unchanged"}#agreement`);
 }
 

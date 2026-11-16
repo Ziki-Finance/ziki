@@ -21,6 +21,9 @@ import { currentViews, type CurrentView } from "./research";
 type Db = PrismaClient;
 
 export const BRIEFING_HOUR = 7;
+
+/** A briefing can go out at 07:00–09:59 local (idea 24): a missed 07:00 doesn't lose the day. */
+export const BRIEFING_WINDOW_HOURS = 3;
 export const BRIEFING_KIND = "finance_briefing";
 
 export type BriefingLine = { symbol: string; name: string; call: FinanceCall; risk: FinanceRisk; reason: string; agentsAgree: number; agentsTotal: number; notReviewedToday: boolean };
@@ -179,11 +182,17 @@ async function deliver(db: Db, person: { userId: string; email: string; briefing
   return { inbox: true, email };
 }
 
-/** Whether a person's local moment is briefing time: 07:xx, Monday to Friday, not a US market holiday. */
+/**
+ * Whether a person's local moment is briefing time: 07:00–09:59 (idea 24), Monday
+ * to Friday, not a US market holiday. After 10:00 the day is skipped, and the next
+ * briefing is the next trading day's. `inboxAt` on the briefing records when it
+ * was sent.
+ */
 export function isBriefingTime(now: Date, timezone: string): { due: boolean; date: string } {
   const local = zonedParts(now, timezone);
   const weekday = local.weekday >= 1 && local.weekday <= 5;
-  return { due: weekday && local.hour === BRIEFING_HOUR && !isMarketHoliday(local.date), date: local.date };
+  const inWindow = local.hour >= BRIEFING_HOUR && local.hour < BRIEFING_HOUR + BRIEFING_WINDOW_HOURS;
+  return { due: weekday && inWindow && !isMarketHoliday(local.date), date: local.date };
 }
 
 /**

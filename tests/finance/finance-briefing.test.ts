@@ -75,10 +75,12 @@ describe("composing the briefing (idea 10)", () => {
 });
 
 describe("delivery at 07:00 local, Monday to Friday (idea 11)", () => {
-  it("is due in the 07:00 hour on a weekday that isn't a US market holiday", () => {
+  it("is due from 07:00 to 09:59 on a weekday that isn't a US market holiday", () => {
     expect(isBriefingTime(new Date("2026-11-17T06:30:00Z"), "Africa/Lagos")).toEqual({ due: true, date: "2026-11-17" }); // Tue 07:30 in Lagos
     expect(isBriefingTime(new Date("2026-11-17T12:05:00Z"), "America/New_York").due).toBe(true); // 07:05 ET
-    expect(isBriefingTime(new Date("2026-11-17T08:00:00Z"), "Africa/Lagos").due).toBe(false); // 09:00
+    expect(isBriefingTime(new Date("2026-11-17T08:30:00Z"), "Africa/Lagos").due).toBe(true); // 09:30, still in the window (idea 24)
+    expect(isBriefingTime(new Date("2026-11-17T05:30:00Z"), "Africa/Lagos").due).toBe(false); // 06:30, too early
+    expect(isBriefingTime(new Date("2026-11-17T09:00:00Z"), "Africa/Lagos").due).toBe(false); // 10:00, the day is skipped
     expect(isBriefingTime(new Date("2026-11-21T06:30:00Z"), "Africa/Lagos").due).toBe(false); // Saturday
     expect(isBriefingTime(new Date("2026-11-26T06:30:00Z"), "Africa/Lagos").due).toBe(false); // Thanksgiving
   });

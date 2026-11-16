@@ -8,6 +8,8 @@ Production code lives in [`emerjent/ziki`](https://github.com/emerjent/ziki) (re
 
 **Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) first.** It is the source of truth for branches, commits, PRs, and local setup. This file adds agent-specific guidance.
 
+**Project continuity rules:** [`CLAUDE.md`](./CLAUDE.md) also applies in full. It is mandatory: every meaningful change is recorded (PROPOSED → APPROVED → IN PROGRESS → COMPLETED → VERIFIED) in `.project-memory/`, decisions go to `DECISIONS.md`, and `HANDOFF.md` is updated before a session ends. Your harness may not load `CLAUDE.md` on its own — read it, because this pointer is the load path.
+
 ## Stack
 
 - Next.js App Router + React 19 + TypeScript + Tailwind CSS

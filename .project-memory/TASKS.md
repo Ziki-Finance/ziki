@@ -24,6 +24,10 @@
 | FIN-T-012 | Release step 2, ideas 10–12 (FIN-CR-005) | Code done on `feat/finance-step2-briefing`; unit-tested; PR stacked on step 1 |
 | FIN-T-013 | Step 2 exit check: test users get a briefing at about 07:00 local for 5 trading days running (Inbox and email) | Not started; needs steps 0–2 merged and deployed, cleared agents (FIN-T-009) and working email on Workers (INF-I-007) |
 | FIN-T-014 | Decide whether to add an AI rewrite of the briefing's wording (FIN-D-018 is code-only for now) | Not started; product decision |
+| FIN-T-015 | Idea 19: staff-set agreement numbers on `/superadmin/finance` (FIN-CR-006 PR A) | Done 2026-11-16 on `feat/finance-step2b-a`; lint and typecheck green, unit 2235/2236 (one load timeout, unrelated) |
+| FIN-T-016 | Idea 22: "Just watch instead" in setup (FIN-CR-006 PR A) | Done 2026-11-16 on `feat/finance-step2b-a`; lint and typecheck green, unit 2235/2236 (one load timeout, unrelated) |
+| FIN-T-017 | Idea 24: briefing window 07:00–09:59 local (FIN-CR-006 PR A) | Done 2026-11-16 on `feat/finance-step2b-a`; lint and typecheck green, unit 2235/2236 (one load timeout, unrelated) |
+| FIN-T-018 | Idea 27 part 1: no "More"/average price in setup and "+ Add" (FIN-CR-006 PR A) | Done 2026-11-16 on `feat/finance-step2b-a`; lint and typecheck green, unit 2235/2236 (one load timeout, unrelated) |
 
 # INF: Infrastructure and deployment
 
@@ -37,3 +41,4 @@
 | INF-T-006 | After the first deploy: upload runtime secrets (`node scripts/cloudflare/upload-secrets.mjs`), re-run the deploy, add the Google OAuth redirect URI | Not started |
 | INF-T-007 | Measure which routes exceed 10 ms CPU on Workers Free (INF-I-004) | Not started |
 | INF-T-008 | The user runs `node scripts/cron/set-github-sweep-secrets.mjs`, then a manual "Platform sweeps" run; confirm the sweeps reach Supabase (INF-CR-006) | Not started |
+| INF-T-009 | Track `CLAUDE.md` and link it from `AGENTS.md` (INF-CR-007) | Done 2026-11-16 |
