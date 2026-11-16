@@ -34,6 +34,12 @@
 - Not done in step 0 (from the PRD's phase 0 list): the legal opinion and the data-provider choice are business tasks, still open (FIN-D-013, FIN-D-014).
 - **Verification:** `tsc --noEmit` exit 0. ESLint clean on the changed files. `vitest run tests/finance` 24/24 pass. Full suite: 2179 passed and 2 timed out under load (`security-checks.test.ts` PDF font test, existing code; the Finance file-scan test, now given 60 s, passes). Not run: the migration against a database, the pages in a browser, e2e. Nothing deployed.
 
+## FIN-CR-004 — Release step 1: Agent research (ideas 6–9)
+- **Date:** 2026-11-16 · **Approval:** APPROVED (FIN-CR-002, steps 0–2) · **Implementation:** IN PROGRESS on `feat/finance-step1-research` (worktree `.claude/worktrees/finance-step1`, stacked on step 0, PR #3) · **Verification:** —
+- **BEFORE:** Step 0 only: people add holdings, but nothing researches them. Pages say "Not reviewed yet".
+- **APPROVED AFTER:** ideas 6–9: nightly review jobs per tracked ticker, agents post views (call, risk, reasons, what would change their mind, sources), other cleared agents give weighted verdicts, agreed views reach users, plus the agent API, MCP tools and a laptop worker.
+- **Acceptance:** the "What is expected" bullets of ideas 6–9. PRD exit check (a staff-only overnight test where every held ticker gets an agreed view) needs real cleared agents and is done after merge.
+
 # INF: Infrastructure and deployment
 
 ## INF-CR-001 — Point DATABASE_URL at Supabase session pooler and apply migrations
