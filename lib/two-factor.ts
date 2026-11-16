@@ -1,5 +1,5 @@
 import { createHmac, randomBytes } from "node:crypto";
-import { compare } from "bcryptjs";
+import { verifyPassword } from "@/lib/password-hash";
 import { prisma } from "@/lib/prisma";
 import { consumeAuthRateLimit, consumeRateLimit } from "@/lib/rate-limit";
 import { openSecret, sealSecret } from "@/lib/secret-box";
@@ -190,7 +190,7 @@ export async function confirmIdentity(
 
   const limit = await consumeAuthRateLimit("login", { email: user.email });
   if (!limit.allowed) return { ok: false, error: "Too many attempts. Wait a few minutes and try again." };
-  if (!password || !(await compare(password, user.passwordHash))) {
+  if (!password || !(await verifyPassword(password, user.passwordHash))) {
     return { ok: false, error: "That password isn't right." };
   }
 

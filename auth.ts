@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { headers } from "next/headers";
-import { compare } from "bcryptjs";
+import { hashPassword, needsRehash, verifyPassword } from "@/lib/password-hash";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/issue";
 import authConfig from "@/auth.config";
@@ -97,7 +97,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         const reqHeaders =
           request?.headers ?? (await headers().catch(() => null));
 
-        const valid = await compare(
+        const valid = await verifyPassword(
           parsed.data.password,
           user.passwordHash,
         );
@@ -108,6 +108,14 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
             headers: reqHeaders,
           });
           return null;
+        }
+
+        // CR-003: move a legacy bcrypt (or outdated) hash to the current scheme.
+        if (needsRehash(user.passwordHash)) {
+          const upgraded = await hashPassword(parsed.data.password);
+          await prisma.user
+            .update({ where: { id: user.id }, data: { passwordHash: upgraded } })
+            .catch((err: unknown) => console.warn("[auth] password rehash failed", err));
         }
 
         // Second step (#648). Only reached with the right password, so these

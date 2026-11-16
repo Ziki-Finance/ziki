@@ -1,6 +1,6 @@
 import { DEFAULT_MARKETING_TASK_TYPES } from "../lib/marketing/default-task-types";
 import { Prisma, PrismaClient, Status, Substatus } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "../lib/password-hash";
 
 const prisma = new PrismaClient();
 
@@ -64,7 +64,7 @@ async function ensureSuperAdmin() {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await hashPassword(password);
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: existing.id },
@@ -80,7 +80,7 @@ async function ensureSuperAdmin() {
     return;
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await hashPassword(password);
   await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
@@ -102,7 +102,7 @@ async function seedDemoData() {
   await prisma.bug.deleteMany();
   await prisma.user.deleteMany();
 
-  const passwordHash = await bcrypt.hash("12345678", 10);
+  const passwordHash = await hashPassword("12345678");
 
   const alice = await prisma.user.create({
     data: {

@@ -12,7 +12,7 @@ type FieldAwareResult = {
   needsCode?: boolean;
 };
 import { AuthError } from "next-auth";
-import { hash } from "bcryptjs";
+import { hashPassword } from "@/lib/password-hash";
 import { Prisma } from "@prisma/client";
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -146,7 +146,7 @@ export async function signupAction(
   const limited = await authRateLimited("signup", email);
   if (limited) return limited;
 
-  const passwordHash = await hash(password, 10);
+  const passwordHash = await hashPassword(password);
   const callbackUrl = safeCallbackUrl(formData.get("callbackUrl"));
 
   try {
@@ -383,7 +383,7 @@ export async function resetPasswordAction(
     return { error: RESET_LINK_INVALID };
   }
 
-  const passwordHash = await hash(password, 10);
+  const passwordHash = await hashPassword(password);
 
   // Claim the token atomically so a raced second request can't reuse it (#209).
   const consumed = await prisma.$transaction((tx) =>

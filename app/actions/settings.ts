@@ -14,7 +14,7 @@ import { walletAddressSchema } from "@/lib/validations/issue";
 import { isAdmin } from "@/lib/roles";
 import { fromZodError, fieldError, type FieldErrorResult } from "@/lib/form-errors";
 import { appCookieOptions } from "@/lib/cookie-options";
-import { compare, hash } from "bcryptjs";
+import { hashPassword, verifyPassword } from "@/lib/password-hash";
 import { sendMail, smtpConfigured } from "@/lib/mail";
 import { logger } from "@/lib/logger";
 import { consumeAuthRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit";
@@ -62,7 +62,7 @@ export async function changePasswordAction(
     return { error: "Password changes are only available for password-based accounts." };
   }
 
-  if (!(await compare(parsed.data.currentPassword, account.passwordHash))) {
+  if (!(await verifyPassword(parsed.data.currentPassword, account.passwordHash))) {
     return {
       error: "Your current password is incorrect.",
       field: "currentPassword",
@@ -70,7 +70,7 @@ export async function changePasswordAction(
     };
   }
 
-  const passwordHash = await hash(parsed.data.password, 10);
+  const passwordHash = await hashPassword(parsed.data.password);
   await prisma.user.update({
     where: { id: user.id },
     data: { passwordHash, sessionVersion: { increment: 1 } },
