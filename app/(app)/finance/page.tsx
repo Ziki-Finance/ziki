@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { optionalUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { normalizeSymbol, profileWords, sharesWords, tickerPath } from "@/lib/finance";
+import { RISK_LEVEL_LABEL, agreementWords, normalizeSymbol, profileWords, sharesWords, tickerPath } from "@/lib/finance";
 import { getProfile, listHoldings } from "@/lib/finance/holdings";
 import { currentViews } from "@/lib/finance/research";
+import { dateWords, pastBriefings, previewBriefing, type BriefingContent } from "@/lib/finance/briefing";
+import { holidayName, zonedParts } from "@/lib/finance/calendar";
+import { ideasFor } from "@/lib/finance/ideas";
+import { BriefingView } from "@/components/finance/briefing-view";
+import { IdeaActions } from "@/components/finance/idea-actions";
 import { marketData } from "@/lib/finance/market-data";
 import { FinanceFooter } from "@/components/finance/finance-footer";
 import { FinanceSetup } from "@/components/finance/finance-setup";
@@ -45,6 +50,16 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
   const holdings = await listHoldings(prisma, user.id);
   // Only agreed views ever reach a person (PRD §7.3), never one agent's opinion.
   const views = await currentViews(prisma, holdings.map((h) => h.ticker.id));
+  const person = { userId: user.id, riskComfort: profile.riskComfort, horizon: profile.horizon, timezone: profile.timezone };
+  const [ideas, past, preview] = await Promise.all([ideasFor(prisma, person), pastBriefings(prisma, user.id), previewBriefing(prisma, person)]);
+  // Today's stored briefing when it has been sent; otherwise the same briefing worked out now, so a
+  // new person sees one within minutes of agents agreeing (PRD §6.2).
+  const local = zonedParts(new Date(), profile.timezone);
+  const stored = past.find((b) => b.date === local.date && b.hasViews);
+  const today = stored ? (stored.content as unknown as BriefingContent) : preview.hasViews ? preview.content : null;
+  const holiday = holidayName(local.date);
+  const weekend = local.weekday === 0 || local.weekday === 6;
+  const earlier = past.filter((b) => b.date !== local.date && b.hasViews);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -57,7 +72,13 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
         <h2 id="briefing-heading" className={heading}>
           Today&apos;s briefing
         </h2>
-        <p className="text-sm text-zk-text2">Agents are reviewing your stocks. Your first briefing arrives by tomorrow morning.</p>
+        {holiday ? <p className="text-sm text-zk-text2">No briefing today: US markets are closed ({holiday}).</p> : null}
+        {!holiday && weekend ? <p className="text-sm text-zk-text2">No briefing at the weekend. The next one arrives on Monday at about 07:00.</p> : null}
+        {today ? (
+          <BriefingView content={today} />
+        ) : (
+          <p className="text-sm text-zk-text2">Agents are reviewing your stocks. Your first briefing arrives by tomorrow morning.</p>
+        )}
       </section>
 
       <section className={card} aria-labelledby="holdings-heading">
@@ -118,14 +139,50 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
         <h2 id="ideas-heading" className={heading}>
           Ideas for you · {profileWords(profile)}
         </h2>
-        <p className="text-sm text-zk-text2">Ideas appear here once agents agree on stocks that fit your answers.</p>
+        {ideas.length === 0 ? (
+          <p className="text-sm text-zk-text2">Ideas appear here once agents agree on stocks that fit your answers.</p>
+        ) : (
+          <ul className="divide-y divide-dashed divide-zk-border">
+            {ideas.map((idea) => (
+              <li key={idea.symbol} className="space-y-1.5 py-3 first:pt-0 last:pb-0">
+                <p className="text-sm">
+                  <span className="font-medium text-zk-text">
+                    {idea.name} ({idea.symbol})
+                  </span>{" "}
+                  <span className="text-zk-text2">
+                    · Risk: {RISK_LEVEL_LABEL[idea.risk]} · {agreementWords(idea)}
+                  </span>
+                </p>
+                <p className="text-sm text-zk-text2">{idea.reason}</p>
+                <IdeaActions symbol={idea.symbol} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className={card} aria-labelledby="past-heading">
         <h2 id="past-heading" className={heading}>
           Past briefings
         </h2>
-        <p className="text-sm text-zk-text2">None yet.</p>
+        {earlier.length === 0 ? (
+          <p className="text-sm text-zk-text2">None yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {earlier.map((b) => (
+              <li key={b.date}>
+                <details>
+                  <summary className="cursor-pointer text-sm">
+                    <span className="font-medium text-zk-text">{dateWords(b.date)}</span> <span className="text-zk-text2">{b.headline}</span>
+                  </summary>
+                  <div className="mt-2 border-l-2 border-zk-border pl-3">
+                    <BriefingView content={b.content as unknown as BriefingContent} />
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <FinanceFooter />
