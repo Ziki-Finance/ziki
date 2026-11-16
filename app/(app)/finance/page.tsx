@@ -3,11 +3,13 @@ import { optionalUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { normalizeSymbol, profileWords, sharesWords, tickerPath } from "@/lib/finance";
 import { getProfile, listHoldings } from "@/lib/finance/holdings";
+import { currentViews } from "@/lib/finance/research";
 import { marketData } from "@/lib/finance/market-data";
 import { FinanceFooter } from "@/components/finance/finance-footer";
 import { FinanceSetup } from "@/components/finance/finance-setup";
 import { FinanceWelcome } from "@/components/finance/finance-welcome";
 import { AddHoldingForm, FinanceProfileMenu } from "@/components/finance/holding-forms";
+import { ViewChip } from "@/components/finance/view-chip";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +43,8 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
   }
 
   const holdings = await listHoldings(prisma, user.id);
+  // Only agreed views ever reach a person (PRD §7.3), never one agent's opinion.
+  const views = await currentViews(prisma, holdings.map((h) => h.ticker.id));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -77,7 +81,9 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
                 </tr>
               </thead>
               <tbody>
-                {holdings.map((h) => (
+                {holdings.map((h) => {
+                  const view = views.get(h.ticker.id);
+                  return (
                   <tr key={h.id} className="border-b border-dashed border-zk-border last:border-0">
                     <td className="py-2 pr-2">
                       <Link href={tickerPath(h.ticker.symbol)} className="hover:underline">
@@ -86,9 +92,22 @@ export default async function FinancePage({ searchParams }: { searchParams?: Pro
                     </td>
                     <td className="py-2 pr-2 text-zk-text2">{sharesWords(h.shares)}</td>
                     <td className="py-2 pr-2 text-zk-muted">—</td>
-                    <td className="py-2 text-zk-muted">Not reviewed yet</td>
+                    <td className="py-2">
+                      {view ? (
+                        <span className="flex flex-col gap-0.5">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <ViewChip call={view.call} owned={h.shares !== null} />
+                            {view.notReviewedToday ? <span className="text-xs text-zk-muted">not reviewed today</span> : null}
+                          </span>
+                          <span className="text-xs text-zk-text2">{view.reasons[0]}</span>
+                        </span>
+                      ) : (
+                        <span className="text-zk-muted">Not reviewed yet</span>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -315,9 +315,8 @@ export async function tickerRecord(db: Db, symbol: string) {
       select: { agreedAt: true, priceAtAgreement: true, agentsAgree: true, agentsTotal: true, divided: true, view: { select: { call: true, risk: true, reasons: true, changeMind: true, sources: true } } },
     }),
   ]);
-  const { id: _id, ...publicTicker } = ticker;
   return {
-    ticker: publicTicker,
+    ticker: { symbol: ticker.symbol, name: ticker.name, type: ticker.type, exchange: ticker.exchange, lastReviewedAt: ticker.lastReviewedAt },
     snapshots: snapshots.map((s) => ({ date: s.date, close: s.close === null ? null : Number(s.close), changePct: s.changePct, headlines: headlinesOf(s.headlines) })),
     agreedViews: agreed.map((a) => ({ ...a.view, agreedAt: a.agreedAt, priceAtAgreement: a.priceAtAgreement === null ? null : Number(a.priceAtAgreement), agentsAgree: a.agentsAgree, agentsTotal: a.agentsTotal, divided: a.divided })),
   };

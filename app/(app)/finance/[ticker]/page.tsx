@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { FINANCE_PATH, TICKER_TYPE_LABEL, normalizeSymbol, sharesWords, tickerPath } from "@/lib/finance";
+import { FINANCE_PATH, RISK_LEVEL_LABEL, TICKER_TYPE_LABEL, agreementWords, callLabel, normalizeSymbol, sharesWords, tickerPath } from "@/lib/finance";
 import { getProfile, holdingFor } from "@/lib/finance/holdings";
+import { currentViews, viewHistory } from "@/lib/finance/research";
+import { ViewChip } from "@/components/finance/view-chip";
 import { removeHoldingAction } from "@/app/actions/finance";
 import { FinanceFooter } from "@/components/finance/finance-footer";
 import { EditSharesForm } from "@/components/finance/holding-forms";
@@ -27,6 +29,8 @@ export default async function FinanceHoldingPage({ params }: { params: Promise<{
   const holding = await holdingFor(prisma, user.id, symbol);
   if (!holding || holding.soldAt) notFound();
   const { ticker } = holding;
+  const [views, history] = await Promise.all([currentViews(prisma, [ticker.id]), viewHistory(prisma, ticker.id)]);
+  const view = views.get(ticker.id) ?? null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -47,8 +51,63 @@ export default async function FinanceHoldingPage({ params }: { params: Promise<{
         <h2 id="why-heading" className={heading}>
           The agents&apos; view
         </h2>
-        <p className="text-sm text-zk-text2">Agents haven&apos;t reviewed {ticker.symbol} yet. Its first review arrives by tomorrow morning.</p>
+        {view ? (
+          <div className="space-y-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <ViewChip call={view.call} owned={holding.shares !== null} />
+              <span className="text-zk-text2">
+                {agreementWords(view)} · Risk: {RISK_LEVEL_LABEL[view.risk]}
+              </span>
+              {view.notReviewedToday ? <span className="text-xs text-zk-muted">Not reviewed today: this is the last view agents agreed on.</span> : null}
+            </div>
+            {view.divided ? <p className="text-zk-text2">Agents are divided: another view with a different call also had support.</p> : null}
+            <ul className="list-disc space-y-1 pl-5 text-zk-text">
+              {view.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+            <div>
+              <p className="font-semibold text-zk-text">What would change our mind</p>
+              <p className="text-zk-text2">{view.changeMind}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-zk-text2">Agents haven&apos;t reviewed {ticker.symbol} yet. Its first review arrives by tomorrow morning.</p>
+        )}
       </section>
+
+      {history.length > 0 ? (
+        <section className={card} aria-labelledby="history-heading">
+          <h2 id="history-heading" className={heading}>
+            History of the view
+          </h2>
+          <ul className="space-y-1 text-sm text-zk-text2">
+            {history.map((h) => (
+              <li key={h.agreedAt.toISOString()}>
+                {h.agreedAt.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })} · {callLabel(h.call, holding.shares !== null)}
+                {h.price !== null ? ` at $${h.price.toFixed(2)}` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {view ? (
+        <section className={card} aria-labelledby="sources-heading">
+          <h2 id="sources-heading" className={heading}>
+            Sources
+          </h2>
+          <ul className="space-y-1 text-sm">
+            {view.sources.map((source) => (
+              <li key={source} className="truncate">
+                <a href={source} target="_blank" rel="noopener noreferrer nofollow" className="text-zk-accent hover:underline">
+                  {source}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className={card} aria-labelledby="edit-heading">
         <h2 id="edit-heading" className={heading}>
