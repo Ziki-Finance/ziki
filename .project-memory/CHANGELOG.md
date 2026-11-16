@@ -135,7 +135,7 @@
 - **ACTUAL AFTER:**
   - `.github/workflows/sweeps.yml` ("Platform sweeps"): `schedule */5 * * * *` plus manual run. Checks out `main`, passes only the secrets that are set (names in `scripts/cron/sweep-secrets.json`; `DATABASE_URL` required), installs, runs `pnpm cron:sweeps`. One run at a time.
   - `scripts/cron/run-sweeps.ts`: runs the sweeps once, prints one line per sweep, reports failed sweeps as Actions warnings, exits 1 only if the run itself fails.
-  - `scripts/cron/server-only-shim.cjs`: lets Node import server modules (`server-only` throws outside the react-server condition, and that condition breaks React on plain Node). Same approach as `vitest.config`.
+  - `scripts/cron/server-only-shim.js`: lets Node import server modules (`server-only` throws outside the react-server condition, and that condition breaks React on plain Node). Same approach as `vitest.config`.
   - `scripts/cron/set-github-sweep-secrets.mjs`: copies the listed secrets from `.env` to GitHub secrets on stdin, never printing them. `GITHUB_*` names are stored as `ZIKI_GITHUB_*` (GitHub forbids that prefix).
   - `wrangler.jsonc` `triggers.crons` is `[]`, which removes the trigger on the next deploy. `cloudflare/worker.ts` only serves the app. `package.json` script `cron:sweeps`; version 0.1.210 → 0.1.211.
 - **Verification:** Locally, the full sweep module graph loads on Node with the shim, and `pnpm cron:sweeps` against an unreachable database runs every sweep (Finance included), reports each failure, and exits 0. Not yet run against Supabase: verify with a manual "Platform sweeps" run after merge, and check that Cloudflare shows no cron invocations after the deploy.
