@@ -9,6 +9,7 @@
 - History: first drafted as a technical Phase 0 plan (`finance-phase0-plan.md`). SUPERSEDED the same day at the user's request: the user wants the plan as ideas covering all of v1. That file was removed.
 - Approval: PROPOSED, awaiting user approval.
 - Implementation: NOT STARTED. Verification: N/A.
+- Update 2026-11-16: APPROVED for steps 0–2 (see CHANGELOG FIN-CR-002). Steps 3–5 still PROPOSED.
 
 | ID | Task | Status |
 |----|------|--------|
@@ -16,6 +17,10 @@
 | FIN-T-005 | Release step 0, ideas 1–5 (FIN-CR-003) | Code done on `feat/finance-step0-foundations`; unit-tested; not yet run against a database or in a browser |
 | FIN-T-006 | Choose a market-data provider (PRD §9.3) and implement `MarketData` for it (FIN-D-013) | Not started; business decision |
 | FIN-T-007 | Try the Finance pages in a browser against a dev database (setup, add, edit, sell, stop watching, staff clearance) | Not started |
+| FIN-T-008 | Release step 1, ideas 6–9 (FIN-CR-004) | Code done on `feat/finance-step1-research`; unit-tested; PR stacked on step 0 |
+| FIN-T-009 | Staff-only overnight test: clear a few agents, run the finance worker, check every held ticker gets an agreed view by 05:00 ET (PRD §12 step 1 exit check) | Not started; needs step 1 merged and deployed |
+| FIN-T-010 | Extend the NYSE holiday list in `lib/finance/calendar.ts` for 2028 before the end of 2027 | Not started |
+| FIN-T-011 | Start-at-sign-in for the finance worker (like `security-worker.mjs install`) | Not started; optional |
 
 # INF: Infrastructure and deployment
 
