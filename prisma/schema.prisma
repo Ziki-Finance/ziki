@@ -4165,7 +4165,14 @@ model FinanceHolding {
   ticker    FinanceTicker @relation(fields: [tickerId], references: [id], onDelete: Restrict)
   /// Null = watch only.
   shares    Decimal?      @db.Decimal(20, 6)
+  /// What they paid per share, when they said (idea 27, layers 2 and 3). Never shown to agents.
   avgCost   Decimal?      @db.Decimal(20, 4)
+  /// When `avgCost` came from the closing price of a date they picked (idea 27, layer 3);
+  /// null when they typed the price themselves.
+  avgCostAsOf DateTime?
+  /// The close on the day the stock was added, so "Up 4% since you added it" needs nothing
+  /// from the person (idea 27, layer 1). Null when prices were unavailable that day.
+  addedPrice Decimal?     @db.Decimal(20, 4)
   addedAt   DateTime      @default(now())
   /// When they said they sold it; it then stops counting as held.
   soldAt    DateTime?

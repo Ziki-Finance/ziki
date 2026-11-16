@@ -1,6 +1,7 @@
 import { Prisma, type AgentLevel, type FinanceCall, type FinanceJobReason, type FinanceRisk, type FinanceVerdictKind, type PrismaClient } from "@prisma/client";
 import { MAX_VIEWS_PER_JOB, settleViews, verdictWeight } from "./agreement";
 import { eastern, easternMinutes, isTradingDay, previousTradingDay } from "./calendar";
+import { directoryEntry } from "./directory";
 import { marketData, type Headline } from "./market-data";
 import { readFinanceSettings } from "./settings";
 
@@ -94,6 +95,32 @@ export async function takeSnapshots(db: Db, date: string, now: Date, limit = 25)
     if (reason && (await createJob(db, ticker.id, date, reason))) jobs += 1;
   }
   return { snapshots, jobs, remaining: tickers.length > limit };
+}
+
+/** The most-traded ETF that tracks the S&P 500: the market's move, for the briefing's last line. */
+export const MARKET_SYMBOL = "SPY";
+
+/**
+ * Records today's price of the market ETF, with no job and no review (idea 21).
+ * One extra call in the evening run, so the briefing can say how the market did
+ * without spending a call per person. Fails quietly: no line is better than a
+ * wrong one, so a missing bar still writes a snapshot with no price.
+ */
+export async function takeMarketSnapshot(db: Db, date: string, now: Date): Promise<void> {
+  const entry = directoryEntry(MARKET_SYMBOL);
+  if (!entry) return;
+  const ticker = await db.financeTicker.upsert({
+    where: { symbol: MARKET_SYMBOL },
+    create: { symbol: entry.symbol, name: entry.name, exchange: entry.exchange, type: entry.type },
+    update: {},
+    select: { id: true },
+  });
+  const bar = await marketData().latestBar(MARKET_SYMBOL);
+  await db.financeSnapshot.createMany({
+    data: [{ tickerId: ticker.id, date, close: bar?.close ?? null, changePct: bar?.changePct ?? null, headlines: [] }],
+    skipDuplicates: true,
+  });
+  await db.financeTicker.update({ where: { id: ticker.id }, data: { lastSnapshotAt: now } });
 }
 
 /** Tickers added since the evening run, never reviewed: a first job straight away. */
@@ -204,6 +231,8 @@ export async function sweepFinance(db: Db, now = new Date()): Promise<FinanceSwe
     const taken = await takeSnapshots(db, today, now);
     result.snapshots = taken.snapshots;
     result.jobs = taken.jobs;
+    // The market's own move, once, after the person's stocks (idea 21).
+    if (!taken.remaining) await takeMarketSnapshot(db, today, now);
     if (!taken.remaining) await markCycle(db, today, "jobs");
   }
 

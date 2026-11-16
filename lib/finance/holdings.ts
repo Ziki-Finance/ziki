@@ -1,5 +1,6 @@
 import type { FinanceHorizon, FinanceRiskComfort, Prisma, PrismaClient } from "@prisma/client";
 import { FINANCE_TRIAL_DAYS, normalizeSymbol } from "@/lib/finance";
+import { eastern } from "./calendar";
 import { marketData } from "./market-data";
 
 /**
@@ -59,21 +60,31 @@ export async function ensureTicker(db: Db, rawSymbol: string) {
   });
 }
 
-export type HoldingInput = { symbol: string; shares: number | null; avgCost?: number | null };
+export type HoldingInput = { symbol: string; shares: number | null };
 
 /**
  * Adds a stock, or updates it if the person already has it: never a
- * duplicate. Adding again a stock they sold brings it back.
+ * duplicate. Adding again a stock they sold brings it back. The day's close is
+ * saved as `addedPrice`, so "Up 4% since you added it" asks the person nothing
+ * (idea 27, layer 1). What they paid is asked for later, on the stock's own
+ * page, and is never part of adding.
  */
 export async function addHolding(db: Db, userId: string, input: HoldingInput) {
   const profile = await db.financeProfile.findUnique({ where: { userId }, select: { noticeAcceptedAt: true } });
   if (!profile) throw new FinanceError("not_set_up", "Accept the notice and answer the two questions first.");
   const ticker = await ensureTicker(db, input.symbol);
-  const avgCost = input.shares === null ? null : (input.avgCost ?? undefined);
+  const bar = input.shares === null ? null : await marketData().latestBar(ticker.symbol);
   return db.financeHolding.upsert({
     where: { userId_tickerId: { userId, tickerId: ticker.id } },
-    create: { userId, tickerId: ticker.id, shares: input.shares, avgCost: avgCost ?? null },
-    update: { shares: input.shares, ...(avgCost !== undefined ? { avgCost } : {}), soldAt: null },
+    create: { userId, tickerId: ticker.id, shares: input.shares, avgCost: null, addedPrice: bar?.close ?? null },
+    update: {
+      shares: input.shares,
+      // Watching only: what they paid no longer applies.
+      ...(input.shares === null ? { avgCost: null, avgCostAsOf: null } : {}),
+      // With no price today, keep the one already recorded rather than blanking the line.
+      ...(bar ? { addedPrice: bar.close } : {}),
+      soldAt: null,
+    },
     include: { ticker: true },
   });
 }
@@ -104,11 +115,45 @@ async function ownHolding(db: Db, userId: string, holdingId: string) {
   return row;
 }
 
-export async function updateShares(db: Db, userId: string, holdingId: string, shares: number | null, avgCost?: number | null) {
+/** Changes the share count. Empty shares turns it into watch only, which clears what they paid. */
+export async function updateShares(db: Db, userId: string, holdingId: string, shares: number | null) {
   await ownHolding(db, userId, holdingId);
   await db.financeHolding.update({
     where: { id: holdingId },
-    data: { shares, ...(shares === null ? { avgCost: null } : avgCost !== undefined ? { avgCost } : {}) },
+    data: shares === null ? { shares, avgCost: null, avgCostAsOf: null } : { shares },
+  });
+}
+
+/**
+ * What they paid per share, typed by them (idea 27, layer 2). A number clears a
+ * date they picked before; null clears both. Information only, never advice, and
+ * agents never see it.
+ */
+export async function setPaidPrice(db: Db, userId: string, holdingId: string, price: number | null) {
+  await ownHolding(db, userId, holdingId);
+  await db.financeHolding.update({ where: { id: holdingId }, data: { avgCost: price, avgCostAsOf: null } });
+}
+
+/**
+ * What they paid, worked out from the close on a date they picked (idea 27,
+ * layer 3). The free data plan has no price history, so only days we recorded a
+ * closing price for are accepted, and a future date is refused.
+ */
+export async function setPaidFromDate(db: Db, userId: string, holdingId: string, date: string, now = new Date()) {
+  const row = await db.financeHolding.findFirst({ where: { id: holdingId, userId }, select: { id: true, tickerId: true } });
+  if (!row) throw new FinanceError("not_found", "That stock isn't on your list any more.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new FinanceError("invalid", "Pick a date.");
+  if (date > eastern(now).date) throw new FinanceError("invalid", "Pick a date in the past.");
+  const snapshot = await db.financeSnapshot.findUnique({
+    where: { tickerId_date: { tickerId: row.tickerId, date } },
+    select: { close: true },
+  });
+  if (!snapshot?.close) {
+    throw new FinanceError("invalid", `We don't have a closing price for that day. Pick one we've recorded for this stock.`);
+  }
+  await db.financeHolding.update({
+    where: { id: holdingId },
+    data: { avgCost: snapshot.close, avgCostAsOf: new Date(`${date}T12:00:00Z`) },
   });
 }
 

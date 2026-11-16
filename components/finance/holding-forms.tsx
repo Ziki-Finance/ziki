@@ -5,6 +5,8 @@ import type { FinanceHorizon, FinanceRiskComfort } from "@prisma/client";
 import {
   addHoldingAction,
   editSharesAction,
+  setPaidFromDateAction,
+  setPaidPriceAction,
   updateFinanceProfileAction,
   type FinanceActionResult,
 } from "@/app/actions/finance";
@@ -53,8 +55,8 @@ export function AddHoldingForm() {
   );
 }
 
-/** "Edit shares" on a holding's page. Empty shares turns it into watch only. */
-export function EditSharesForm({ holdingId, shares, avgCost }: { holdingId: string; shares: string; avgCost: string }) {
+/** "Shares" on a holding's page. Empty shares turns it into watch only. */
+export function EditSharesForm({ holdingId, shares }: { holdingId: string; shares: string }) {
   const [state, action, pending] = useActionState<FinanceActionResult, FormData>(editSharesAction, {});
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
@@ -63,13 +65,62 @@ export function EditSharesForm({ holdingId, shares, avgCost }: { holdingId: stri
         Shares
       </label>
       <input id="edit-shares" name="shares" defaultValue={shares} inputMode="decimal" placeholder="empty = watch" className={`${input} w-32`} />
-      <label className="text-sm text-zk-text2" htmlFor="edit-cost">
-        Avg price paid
-      </label>
-      <input id="edit-cost" name="avgCost" defaultValue={avgCost} inputMode="decimal" placeholder="optional" className={`${input} w-28`} />
       <button type="submit" disabled={pending} className={primary}>
-        {pending ? "Saving…" : "Edit shares"}
+        {pending ? "Saving…" : "Save shares"}
       </button>
+      {state.ok ? <span className="text-sm text-zk-text2">Saved.</span> : null}
+      {state.error ? (
+        <p role="alert" className="basis-full text-sm text-zk-bad-fg">
+          {state.error}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/**
+ * What they paid per share (idea 27, layer 2). Optional and information only:
+ * it is used for their own line on the page, never by an agent.
+ */
+export function PaidPriceForm({ holdingId, avgCost }: { holdingId: string; avgCost: string }) {
+  const [state, action, pending] = useActionState<FinanceActionResult, FormData>(setPaidPriceAction, {});
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="holdingId" value={holdingId} />
+      <label className="text-sm text-zk-text2" htmlFor="paid-price">
+        Price per share you paid
+      </label>
+      <input id="paid-price" name="avgCost" defaultValue={avgCost} inputMode="decimal" placeholder="optional" className={`${input} w-28`} />
+      <button type="submit" disabled={pending} className={primary}>
+        {pending ? "Saving…" : "Save price"}
+      </button>
+      {state.ok ? <span className="text-sm text-zk-text2">Saved.</span> : null}
+      {state.error ? (
+        <p role="alert" className="basis-full text-sm text-zk-bad-fg">
+          {state.error}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/**
+ * The date they bought it (idea 27, layer 3), for someone who doesn't remember
+ * the price: the close we recorded that day is used instead.
+ */
+export function PaidDateForm({ holdingId, boughtOn }: { holdingId: string; boughtOn: string }) {
+  const [state, action, pending] = useActionState<FinanceActionResult, FormData>(setPaidFromDateAction, {});
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="holdingId" value={holdingId} />
+      <label className="text-sm text-zk-text2" htmlFor="paid-date">
+        Or the date you bought it
+      </label>
+      <input id="paid-date" name="boughtOn" type="date" defaultValue={boughtOn} className={`${input} w-40`} />
+      <button type="submit" disabled={pending} className={primary}>
+        {pending ? "Saving…" : "Use that day's price"}
+      </button>
+      <span className="basis-full text-xs text-zk-muted">Only days we recorded a closing price for this stock work.</span>
       {state.ok ? <span className="text-sm text-zk-text2">Saved.</span> : null}
       {state.error ? (
         <p role="alert" className="basis-full text-sm text-zk-bad-fg">

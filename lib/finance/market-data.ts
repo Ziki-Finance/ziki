@@ -1,13 +1,15 @@
 import type { FinanceTickerType } from "@prisma/client";
 import { directoryEntry, searchDirectory } from "./directory";
+import { finnhubApiKey, finnhubMarketData } from "./finnhub";
 
 /**
  * The one place Ziki Finance talks to market data (FIN-D-013).
  *
- * No licensed provider has been chosen yet (PRD §9.3: Polygon.io, Alpaca or
- * Financial Modeling Prep). Until one is, search uses the built-in directory
- * and there are no prices: pages show "—". Wiring a provider in means
- * implementing `MarketData` for it and returning it from `marketData()`.
+ * During testing the provider is Finnhub's free plan (FIN-CR-006, idea 18,
+ * FIN-D-021), used only through `finnhub.ts`. With no `FINNHUB_API_KEY` the
+ * built-in directory answers search and there are no prices, so pages show
+ * "—" and nothing breaks. Changing provider before launch means implementing
+ * `MarketData` for it and returning it from `marketData()`.
  */
 
 export type TickerMatch = { symbol: string; name: string; exchange: string | null; type: FinanceTickerType };
@@ -57,9 +59,11 @@ export const directoryMarketData: MarketData = {
 
 let override: MarketData | null = null;
 
-/** The market data in use. */
+/** The market data in use: Finnhub when its key is set, otherwise the directory. */
 export function marketData(): MarketData {
-  return override ?? directoryMarketData;
+  if (override) return override;
+  const key = finnhubApiKey();
+  return key ? finnhubMarketData(key) : directoryMarketData;
 }
 
 /** Tests only: use another provider, or `null` to go back. */
