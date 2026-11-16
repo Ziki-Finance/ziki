@@ -18,3 +18,8 @@ The Ziki issue tracker (Next.js 16, Prisma 6, PostgreSQL) runs on a **Supabase**
 
 ## Finance feature (FIN)
 - PRD v0.2 and wireframes approved as documents (FIN-CR-001). The v1 plan as 17 ideas is PROPOSED (FIN-CR-002). Workers-Free risks for it: INF-I-005.
+- 2026-11-16: FIN-CR-002 APPROVED for release steps 0–2 and built, each on its own stacked branch, unit-tested only:
+  - Step 0 foundations (FIN-CR-003): `feat/finance-step0-foundations`, PR #3 into `main`.
+  - Step 1 agent research (FIN-CR-004): `feat/finance-step1-research`, PR #5 into the step 0 branch.
+  - Step 2 daily briefing (FIN-CR-005): `feat/finance-step2-briefing`, PR into the step 1 branch.
+- Not merged or deployed yet. Not tried in a browser or against a database. No market-data provider yet (FIN-D-013), so there are no prices. Steps 3–5 (alerts, money, beta) are still PROPOSED. Contract: `docs/finance.md`.

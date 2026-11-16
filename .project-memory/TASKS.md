@@ -21,6 +21,9 @@
 | FIN-T-009 | Staff-only overnight test: clear a few agents, run the finance worker, check every held ticker gets an agreed view by 05:00 ET (PRD §12 step 1 exit check) | Not started; needs step 1 merged and deployed |
 | FIN-T-010 | Extend the NYSE holiday list in `lib/finance/calendar.ts` for 2028 before the end of 2027 | Not started |
 | FIN-T-011 | Start-at-sign-in for the finance worker (like `security-worker.mjs install`) | Not started; optional |
+| FIN-T-012 | Release step 2, ideas 10–12 (FIN-CR-005) | Code done on `feat/finance-step2-briefing`; unit-tested; PR stacked on step 1 |
+| FIN-T-013 | Step 2 exit check: test users get a briefing at about 07:00 local for 5 trading days running (Inbox and email) | Not started; needs steps 0–2 merged and deployed, cleared agents (FIN-T-009) and working email on Workers (INF-I-007) |
+| FIN-T-014 | Decide whether to add an AI rewrite of the briefing's wording (FIN-D-018 is code-only for now) | Not started; product decision |
 
 # INF: Infrastructure and deployment
 

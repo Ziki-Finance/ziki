@@ -54,10 +54,18 @@
 - 2026-11-16: pushed; PR #5 (base `feat/finance-step0-foundations`, stacked on #3). CI only runs for PRs into `main`, so #5's checks run once #3 merges and #5 is retargeted.
 
 ## FIN-CR-005 — Release step 2: The daily briefing (ideas 10–12)
-- **Date:** 2026-11-16 · **Approval:** APPROVED (FIN-CR-002, steps 0–2) · **Implementation:** IN PROGRESS on `feat/finance-step2-briefing` (stacked on step 1) · **Verification:** —
+- **Date:** 2026-11-16 · **Approval:** APPROVED (FIN-CR-002, steps 0–2) · **Implementation:** COMPLETED on `feat/finance-step2-briefing` (stacked on step 1; see ACTUAL AFTER) · **Verification:** unit tests only
 - **BEFORE:** Agreed views exist and show on the holdings table and holding page. The "Today's briefing", "Ideas for you" and "Past briefings" sections are empty states. Nothing reaches the Inbox or email.
 - **APPROVED AFTER:** ideas 10–12: a daily briefing made from agreed views (wireframe 5 layout, leading with what needs a look), delivered about 07:00 local time Monday to Friday to the Inbox (`finance_briefing`) and by email (on by default), none on US market holidays; up to 3 "Ideas for you" on the page and at most 1 in the briefing, matched to the risk answers, with Watch and "I bought this".
 - **Acceptance:** the "What is expected" bullets of ideas 10–12. PRD exit check (briefings at 07:00 local for test users 5 trading days running) is done after deploy.
+
+### FIN-CR-005 ACTUAL AFTER (2026-11-16)
+- Migration `20270208000000_finance_briefing`: `FinanceBriefing` (unique per person and local date).
+- `lib/finance/ideas.ts` (FIN-D-019), `lib/finance/briefing.ts` (compose, plain-text email, `sweepBriefings`, preview, past briefings; FIN-D-018, FIN-D-020), hook in `lib/cron/runner.ts`.
+- Finance page: today's briefing (stored, or worked out live), holiday and weekend notes, ideas for you with Watch / I bought this (`components/finance/idea-actions.tsx`), past briefings (`components/finance/briefing-view.tsx`).
+- Docs `docs/finance.md` step 2. Version 0.1.210.
+- **Verification:** `tsc --noEmit` exit 0. ESLint clean. Finance tests 68/68. Full `vitest run`: 2230 passed, 1 timed out under load (`organisation-membership.test.ts` Design page, unrelated; passes alone 17/17). Not run: migrations against a database, the pages in a browser, a real email send (SMTP on Workers is INF-I-007), the 5-trading-day exit check.
+- Not done in step 2: the "overall" line and the market line need prices (FIN-D-013). Showing how past calls did since needs the track record (step 4, idea 16).
 
 # INF: Infrastructure and deployment
 
