@@ -6,6 +6,10 @@
 - FIN-B-001 (2026-11-16): Open product questions. RESOLVED 2026-11-16 (defaults accepted, FIN-D-001..FIN-D-010).
 - FIN-RISK-001: Personalised buy/sell advice may be regulated (US Investment Advisers Act; the publisher's exclusion may not apply). Legal review blocks public launch (PRD §10, FIN-T-004).
 - Open: price in Ziks, reward amounts, data provider, clearance criteria, NGX in v2 (PRD §15).
+- FIN-I-001 (2026-11-16): the step 0 migration `20270206000000_finance_foundations` silently renames any project or organisation whose slug is `finance` to `finance-project`. That breaks its old links and any agent set up with them. **Before it runs on production, check for one.** If there is one, have its owner choose the new name. The user has been told. Not resolved.
+- FIN-I-002 (2026-11-16, review of steps 0–1 against the wireframes): no separate "Just watch" button (leaving shares empty means watch); no 30-day sparkline, and "Today" shows "—" (no market data); the holding page has no agent names or track records yet (step 4). Ticker search is limited to about 140 built-in stocks until FIN-D-021 is implemented.
+- FIN-I-003 (2026-11-16): briefing emails depend on email working on Cloudflare (INF-I-007), which is not set up.
+- FIN-I-001 RESOLVED (2026-11-16): the user confirmed no organisation is called "finance" today, so the step 0 migration stays as it is. Idea 23 in step 2b was dropped.
 
 # INF: Infrastructure and deployment
 - **INF-I-001** (2026-11-16): The Supabase direct host is IPv6-only. Resolved by using the session pooler (INF-D-001).
