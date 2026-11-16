@@ -35,10 +35,22 @@
 - **Verification:** `tsc --noEmit` exit 0. ESLint clean on the changed files. `vitest run tests/finance` 24/24 pass. Full suite: 2179 passed and 2 timed out under load (`security-checks.test.ts` PDF font test, existing code; the Finance file-scan test, now given 60 s, passes). Not run: the migration against a database, the pages in a browser, e2e. Nothing deployed.
 
 ## FIN-CR-004 — Release step 1: Agent research (ideas 6–9)
-- **Date:** 2026-11-16 · **Approval:** APPROVED (FIN-CR-002, steps 0–2) · **Implementation:** IN PROGRESS on `feat/finance-step1-research` (worktree `.claude/worktrees/finance-step1`, stacked on step 0, PR #3) · **Verification:** —
+- **Date:** 2026-11-16 · **Approval:** APPROVED (FIN-CR-002, steps 0–2) · **Implementation:** COMPLETED on `feat/finance-step1-research` (worktree `.claude/worktrees/finance-step1`, stacked on step 0, PR #3; see ACTUAL AFTER) · **Verification:** unit tests only
 - **BEFORE:** Step 0 only: people add holdings, but nothing researches them. Pages say "Not reviewed yet".
 - **APPROVED AFTER:** ideas 6–9: nightly review jobs per tracked ticker, agents post views (call, risk, reasons, what would change their mind, sources), other cleared agents give weighted verdicts, agreed views reach users, plus the agent API, MCP tools and a laptop worker.
 - **Acceptance:** the "What is expected" bullets of ideas 6–9. PRD exit check (a staff-only overnight test where every held ticker gets an agreed view) needs real cleared agents and is done after merge.
+- **Branch note:** the planned branch `feat/finance-step1-agent-research` was used by mistake by another session for INF-CR-005 (commit `b712c55`). Step 1 lives on `feat/finance-step1-research` instead. The other branch was left as it was.
+- **User decision (2026-11-16):** keep the agreed-view display on the Finance page and holding page in step 1 (asked: "why is holding page here in step 1"; answered: "keep it in step 1").
+
+### FIN-CR-004 ACTUAL AFTER (2026-11-16)
+- Migration `20270207000000_finance_research`: `FinanceSnapshot`, `FinanceJob`, `FinanceView`, `FinanceVerdict`, `FinanceAgreedView`, `FinanceCycle` and their enums. View and verdict `agentId` are nullable with SetNull, so deleting an agent's owner still works and the text stays for audit.
+- `lib/finance/calendar.ts` (Eastern time; NYSE holidays 2026–2027 only), `lib/finance/agreement.ts` (pure rules), `lib/finance/research.ts` (snapshots, due jobs, views, verdicts, settling, `sweepFinance`, what people and agents read), and the hook in `lib/cron/runner.ts`.
+- Agent API `app/api/v1/finance/**` with `lib/finance/agent-api.ts` (finance clearance and not paused, checked on every call). MCP tools `ziki_finance_*`. `docs/ziki-for-agents.md` section "Ziki Finance".
+- `scripts/finance-worker.mjs` (setup / run / status). `runClaude` in `scripts/security-worker.mjs` now takes `allowedTools`. No start-at-sign-in yet.
+- Pages: holdings table chip and first reason; holding page with reasons, risk, agreement count, change-mind, history and sources. `components/finance/view-chip.tsx`.
+- Docs `docs/finance.md` step 1. Version 0.1.209.
+- **Verification:** `tsc --noEmit` exit 0. Full `vitest run`: 2215 tests, all pass after registering the finance schemas in `tests/platform/api-error-contract.test.ts`. MCP tool table tests 389/389. Not run: migrations against a database, the pages in a browser, the worker against a live server, the overnight staff test. Nothing deployed.
+- Known limits: with no market-data provider (FIN-D-013), snapshots have no price and no headlines. Jobs then come only from `first` and `weekly`, and `priceAtAgreement` is null.
 
 # INF: Infrastructure and deployment
 
