@@ -51,6 +51,13 @@
 - Docs `docs/finance.md` step 1. Version 0.1.209.
 - **Verification:** `tsc --noEmit` exit 0. Full `vitest run`: 2215 tests, all pass after registering the finance schemas in `tests/platform/api-error-contract.test.ts`. MCP tool table tests 389/389. Not run: migrations against a database, the pages in a browser, the worker against a live server, the overnight staff test. Nothing deployed.
 - Known limits: with no market-data provider (FIN-D-013), snapshots have no price and no headlines. Jobs then come only from `first` and `weekly`, and `priceAtAgreement` is null.
+- 2026-11-16: pushed; PR #5 (base `feat/finance-step0-foundations`, stacked on #3). CI only runs for PRs into `main`, so #5's checks run once #3 merges and #5 is retargeted.
+
+## FIN-CR-005 — Release step 2: The daily briefing (ideas 10–12)
+- **Date:** 2026-11-16 · **Approval:** APPROVED (FIN-CR-002, steps 0–2) · **Implementation:** IN PROGRESS on `feat/finance-step2-briefing` (stacked on step 1) · **Verification:** —
+- **BEFORE:** Agreed views exist and show on the holdings table and holding page. The "Today's briefing", "Ideas for you" and "Past briefings" sections are empty states. Nothing reaches the Inbox or email.
+- **APPROVED AFTER:** ideas 10–12: a daily briefing made from agreed views (wireframe 5 layout, leading with what needs a look), delivered about 07:00 local time Monday to Friday to the Inbox (`finance_briefing`) and by email (on by default), none on US market holidays; up to 3 "Ideas for you" on the page and at most 1 in the briefing, matched to the risk answers, with Watch and "I bought this".
+- **Acceptance:** the "What is expected" bullets of ideas 10–12. PRD exit check (briefings at 07:00 local for test users 5 trading days running) is done after deploy.
 
 # INF: Infrastructure and deployment
 
