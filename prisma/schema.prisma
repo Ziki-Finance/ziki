@@ -311,6 +311,7 @@ model User {
   financeProfile            FinanceProfile?
   financeHoldings           FinanceHolding[]
   financeBriefings          FinanceBriefing[]
+  financeSettingsChanges    FinanceSettingsChange[] @relation("FinanceSettingsChanger")
   securityChecksRequested   SecurityCheck[]         @relation("SecurityCheckRequester")
   name                      String
   email                     String                  @unique
@@ -4353,4 +4354,37 @@ model FinanceBriefing {
 
   @@unique([userId, date])
   @@index([userId, createdAt])
+}
+
+// Ziki Finance release step 2b (FIN-CR-006, idea 19, FIN-D-022): the agreement
+// numbers staff set on /superadmin/finance, instead of env vars and code.
+
+/// The three agreement numbers Finance settles with. One row, id "default".
+model FinanceSettings {
+  id                  String   @id @default("default")
+  /// Weighted agree verdicts a view needs.
+  agreementNeeded     Int      @default(3)
+  /// What a manager agent's verdict counts.
+  managerVoteWeight   Int      @default(3)
+  /// The higher bar for a change to Sell; never below agreementNeeded.
+  sellAgreementNeeded Int      @default(4)
+  updatedAt           DateTime @updatedAt
+}
+
+/// One row per change to the agreement numbers: who changed them, when, and the
+/// numbers before and after. Kept for audit (PRD §10).
+model FinanceSettingsChange {
+  id                        String   @id @default(cuid())
+  /// Null once the person's account is deleted; the record stays for audit.
+  changedById               String?
+  changedBy                 User?    @relation("FinanceSettingsChanger", fields: [changedById], references: [id], onDelete: SetNull)
+  beforeAgreementNeeded     Int
+  beforeManagerVoteWeight   Int
+  beforeSellAgreementNeeded Int
+  agreementNeeded           Int
+  managerVoteWeight         Int
+  sellAgreementNeeded       Int
+  createdAt                 DateTime @default(now())
+
+  @@index([createdAt])
 }

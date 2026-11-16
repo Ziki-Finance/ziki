@@ -8,7 +8,7 @@ import type { TickerMatch } from "@/lib/finance/market-data";
 import { ProfileChoices } from "./profile-choices";
 import { TickerBox } from "./ticker-box";
 
-type Row = { symbol: string; name: string; shares: string; avgCost: string; more: boolean };
+type Row = { symbol: string; name: string; shares: string };
 
 /**
  * First visit (wireframe 2): one scrolling screen, not a wizard. The notice and
@@ -19,7 +19,7 @@ export function FinanceSetup({ initial }: { initial: TickerMatch | null }) {
   const router = useRouter();
   const [state, action, pending] = useActionState<FinanceActionResult, FormData>(setUpFinanceAction, {});
   const [accepted, setAccepted] = useState(false);
-  const [rows, setRows] = useState<Row[]>(initial ? [{ symbol: initial.symbol, name: initial.name, shares: "", avgCost: "", more: false }] : []);
+  const [rows, setRows] = useState<Row[]>(initial ? [{ symbol: initial.symbol, name: initial.name, shares: "" }] : []);
   // The person's time zone, for the 07:00 briefing; the server checks it and falls back to US Eastern.
   const timezone = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -35,7 +35,13 @@ export function FinanceSetup({ initial }: { initial: TickerMatch | null }) {
   }, [state.ok, router]);
 
   function add(match: TickerMatch) {
-    setRows((current) => (current.some((r) => r.symbol === match.symbol) ? current : [...current, { symbol: match.symbol, name: match.name, shares: "", avgCost: "", more: false }]));
+    setRows((current) => (current.some((r) => r.symbol === match.symbol) ? current : [...current, { symbol: match.symbol, name: match.name, shares: "" }]));
+  }
+  /** "Just watch instead" (idea 22): the stock goes in with no shares, so it is only watched. */
+  function watch(symbol: string) {
+    const match = rows.find((r) => r.symbol === symbol);
+    if (match) return;
+    setRows((current) => (current.some((r) => r.symbol === symbol) ? current : [...current, { symbol, name: "", shares: "" }]));
   }
   function change(i: number, patch: Partial<Row>) {
     setRows((current) => current.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -68,7 +74,7 @@ export function FinanceSetup({ initial }: { initial: TickerMatch | null }) {
           Add what you own
         </h2>
         <p className="text-sm text-zk-text2">Pick a stock, then type how many shares you have. Leave shares empty to just watch it.</p>
-        <TickerBox onPick={add} placeholder="Ticker or company, e.g. AAPL or Apple" />
+        <TickerBox onPick={add} onWatch={watch} placeholder="Ticker or company, e.g. AAPL or Apple" />
         {rows.length > 0 ? (
           <ul className="divide-y divide-dashed divide-zk-border">
             {rows.map((row, i) => (
@@ -89,29 +95,6 @@ export function FinanceSetup({ initial }: { initial: TickerMatch | null }) {
                   onChange={(e) => change(i, { shares: e.target.value })}
                   className="w-44 rounded-md border border-zk-border bg-zk-surface px-2 py-1 text-sm"
                 />
-                {row.more ? (
-                  <>
-                    <label className="sr-only" htmlFor={`cost-${row.symbol}`}>
-                      Average price paid for {row.symbol}
-                    </label>
-                    <input
-                      id={`cost-${row.symbol}`}
-                      name="avgCost"
-                      inputMode="decimal"
-                      placeholder="Avg price paid ($)"
-                      value={row.avgCost}
-                      onChange={(e) => change(i, { avgCost: e.target.value })}
-                      className="w-36 rounded-md border border-zk-border bg-zk-surface px-2 py-1 text-sm"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <input type="hidden" name="avgCost" value="" />
-                    <button type="button" onClick={() => change(i, { more: true })} className="text-xs text-zk-accent hover:underline">
-                      More
-                    </button>
-                  </>
-                )}
                 <button
                   type="button"
                   onClick={() => setRows((current) => current.filter((_, j) => j !== i))}

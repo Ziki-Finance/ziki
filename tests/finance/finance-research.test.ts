@@ -12,6 +12,8 @@ function fakeDb() {
     financeVerdict: { create: vi.fn() },
     financeAgreedView: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), create: vi.fn() },
     financeCycle: { findUnique: vi.fn().mockResolvedValue(null), createMany: vi.fn() },
+    // No row yet: the agreement numbers staff set fall back to the defaults (idea 19).
+    financeSettings: { findUnique: vi.fn().mockResolvedValue(null) },
     $transaction: vi.fn(),
   };
   db.$transaction.mockImplementation((fn: (tx: typeof db) => unknown) => fn(db));

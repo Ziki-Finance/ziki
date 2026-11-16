@@ -2,6 +2,7 @@ import { Prisma, type AgentLevel, type FinanceCall, type FinanceJobReason, type 
 import { MAX_VIEWS_PER_JOB, settleViews, verdictWeight } from "./agreement";
 import { eastern, easternMinutes, isTradingDay, previousTradingDay } from "./calendar";
 import { marketData, type Headline } from "./market-data";
+import { readFinanceSettings } from "./settings";
 
 /**
  * Ziki Finance agent research (FIN-CR-004, ideas 6–8; PRD §7).
@@ -126,7 +127,8 @@ export async function settleJob(db: Db, jobId: string, now: Date): Promise<"agre
     },
   });
   if (!job || job.status !== "open") return "skipped";
-  const result = settleViews(job.views, await previousCall(db, job.tickerId));
+  const settings = await readFinanceSettings(db);
+  const result = settleViews(job.views, await previousCall(db, job.tickerId), settings);
   const snapshot = await db.financeSnapshot.findUnique({ where: { tickerId_date: { tickerId: job.tickerId, date: job.date } }, select: { close: true } });
 
   return db.$transaction(async (tx) => {
@@ -289,9 +291,10 @@ export async function giveVerdict(db: Db, agent: FinanceAgent, viewId: string, i
   if (!view) throw new FinanceJobError(404, "not_found", "No such view.");
   if (view.outcome !== "open" || view.job.status !== "open") throw new FinanceJobError(409, "view_closed", "This view has settled; no more verdicts.");
   if (view.ownerId === agent.ownerId) throw new FinanceJobError(403, "own_view", "Agents can't judge a view by their own owner's agents.");
+  const settings = await readFinanceSettings(db);
   try {
     return await db.financeVerdict.create({
-      data: { viewId: view.id, agentId: agent.agentId, ownerId: agent.ownerId, verdict: input.verdict, reason: input.reason, weight: verdictWeight(agent.level) },
+      data: { viewId: view.id, agentId: agent.agentId, ownerId: agent.ownerId, verdict: input.verdict, reason: input.reason, weight: verdictWeight(agent.level, settings) },
       select: { id: true, weight: true },
     });
   } catch (error) {

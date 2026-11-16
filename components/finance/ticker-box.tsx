@@ -14,12 +14,15 @@ export function TickerBox({
   defaultValue = "",
   placeholder = "Ticker or company, e.g. AAPL or Apple",
   onPick,
+  onWatch,
   label = "Ticker or company",
 }: {
   name?: string;
   defaultValue?: string;
   placeholder?: string;
   onPick?: (match: TickerMatch) => void;
+  /** The other choice beside the box: watch what is typed, with no shares (idea 22). */
+  onWatch?: (symbol: string) => void;
   label?: string;
 }) {
   const [value, setValue] = useState(defaultValue);
@@ -54,55 +57,72 @@ export function TickerBox({
 
   return (
     <div className="relative min-w-0 flex-1">
-      <label className="sr-only" htmlFor={`${listId}-input`}>
-        {label}
-      </label>
-      <input
-        id={`${listId}-input`}
-        name={onPick ? undefined : name}
-        value={value}
-        autoComplete="off"
-        spellCheck={false}
-        role="combobox"
-        aria-expanded={open && shown.length > 0}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-zk-border bg-zk-surface px-3 py-2 text-sm text-zk-text placeholder:text-zk-muted focus:border-zk-accent focus:outline-none"
-        onChange={(event) => {
-          setValue(event.target.value);
-          setOpen(true);
-          setActive(-1);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
-        onKeyDown={(event) => {
-          if (!open || shown.length === 0) {
-            if (event.key === "Enter" && onPick && value.trim()) {
-              event.preventDefault();
-              const exact = shown.find((m) => m.symbol === value.trim().toUpperCase());
-              if (exact) pick(exact);
+      <div className="flex items-center gap-2">
+        <label className="sr-only" htmlFor={`${listId}-input`}>
+          {label}
+        </label>
+        <input
+          id={`${listId}-input`}
+          name={onPick ? undefined : name}
+          value={value}
+          autoComplete="off"
+          spellCheck={false}
+          role="combobox"
+          aria-expanded={open && shown.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-zk-border bg-zk-surface px-3 py-2 text-sm text-zk-text placeholder:text-zk-muted focus:border-zk-accent focus:outline-none"
+          onChange={(event) => {
+            setValue(event.target.value);
+            setOpen(true);
+            setActive(-1);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onKeyDown={(event) => {
+            if (!open || shown.length === 0) {
+              if (event.key === "Enter" && onPick && value.trim()) {
+                event.preventDefault();
+                const exact = shown.find((m) => m.symbol === value.trim().toUpperCase());
+                if (exact) pick(exact);
+              }
+              return;
             }
-            return;
-          }
-          if (event.key === "ArrowDown") {
-            event.preventDefault();
-            setActive((i) => (i + 1) % shown.length);
-          } else if (event.key === "ArrowUp") {
-            event.preventDefault();
-            setActive((i) => (i <= 0 ? shown.length - 1 : i - 1));
-          } else if (event.key === "Enter") {
-            const choice = shown[active] ?? (onPick ? shown[0] : undefined);
-            if (choice) {
+            if (event.key === "ArrowDown") {
               event.preventDefault();
-              pick(choice);
+              setActive((i) => (i + 1) % shown.length);
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setActive((i) => (i <= 0 ? shown.length - 1 : i - 1));
+            } else if (event.key === "Enter") {
+              const choice = shown[active] ?? (onPick ? shown[0] : undefined);
+              if (choice) {
+                event.preventDefault();
+                pick(choice);
+              }
+            } else if (event.key === "Escape") {
+              setOpen(false);
             }
-          } else if (event.key === "Escape") {
-            setOpen(false);
-          }
-        }}
-      />
+          }}
+        />
+        {onWatch ? (
+          <button
+            type="button"
+            onClick={() => {
+              const symbol = value.trim().toUpperCase();
+              if (!symbol) return;
+              setValue("");
+              setOpen(false);
+              onWatch(symbol);
+            }}
+            className="whitespace-nowrap rounded-lg border border-zk-border px-3 py-2 text-sm text-zk-text2 hover:bg-zk-chip"
+          >
+            Just watch instead
+          </button>
+        ) : null}
+      </div>
       {open && shown.length > 0 ? (
         <ul id={listId} role="listbox" className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-zk-border bg-zk-surface py-1 shadow-lg">
           {shown.map((match, i) => (

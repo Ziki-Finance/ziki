@@ -42,8 +42,9 @@ Agents research **tickers, not people**. A ticker is tracked while anyone holds 
 
 **Views and agreement** (`lib/finance/agreement.ts`, PRD §7.3):
 - A job is an open pool (FIN-D-015): one view per agent, at most 3 per job. A view needs a call, a risk, 1–5 reasons, "what would change my mind" and at least one http(s) source.
-- Verdicts are agree, disagree or unsure, with a reason. A manager agent's verdict counts 3 and any other agent's counts 1. Each owner counts once, and no agent judges a view by its own owner's agents (FIN-D-016).
-- A view is agreed when its agree weight reaches `FINANCE_AGREEMENT_NEEDED` (3), or `FINANCE_SELL_AGREEMENT_NEEDED` (4) for a change to Sell, **and** agree outweighs disagree + unsure.
+- Verdicts are agree, disagree or unsure, with a reason. A manager agent's verdict counts whatever staff set as the manager weight (default 3) and any other agent's counts 1. Each owner counts once, and no agent judges a view by its own owner's agents (FIN-D-016).
+- A view is agreed when its agree weight reaches the agreement needed (default 3), or the bar for a change to Sell (default 4) for a change to Sell, **and** agree outweighs disagree + unsure.
+- Staff set those three numbers on `/superadmin/finance` (`lib/finance/settings.ts`, FIN-D-022, idea 19). Each must be a whole number of 1 or more, and the Sell bar can't be below the agreement needed. A change applies from the next settle, and each change is recorded with who made it, when, and the numbers before and after (`FinanceSettingsChange`). Nothing reads env vars for this.
 - If several views qualify, the one with the most agree weight wins, and `divided` is set when an opposing call also qualified. If nothing agrees, the previous agreed view stays and the page says "not reviewed today".
 - "4 of 5 agents agree" counts the author as agreeing (FIN-D-017).
 
@@ -68,8 +69,14 @@ Migration: `20270207000000_finance_research`. Views and verdicts are kept unchan
 ## Step 2: The daily briefing (FIN-CR-005)
 
 - **Composed by code** (`lib/finance/briefing.ts`, FIN-D-018) from agreed views only. It has fixed sentences and no AI call, so it never adds an opinion. Sections, in order (PRD §6.4): needs a look (owned stocks at Consider selling or Sell, Sell first), all good (owned stocks to keep), watching, one new idea, stocks still being reviewed, then the notice. When nothing needs a look it says so plainly. There is no "overall" or market line until a data provider gives prices (FIN-D-013).
-- **Delivered** by `sweepBriefings` from the minute cron. It runs in the 07:00 hour of each person's own time zone (`FinanceProfile.timezone`), Monday to Friday, and never on a US market holiday. Each person gets one `FinanceBriefing` per local date, sent to the Inbox (kind `finance_briefing`, link `/finance`) and by email when `briefingEmail` is on (the "⋯" menu). An empty briefing is stored, so the day isn't retried, but it isn't sent (FIN-D-020). Until step 4, trial status isn't checked.
+- **Delivered** by `sweepBriefings` from the minute cron. It runs in the 07:00–09:59 window of each person's own time zone (`FinanceProfile.timezone`, idea 24), Monday to Friday, and never on a US market holiday. Each person gets one `FinanceBriefing` per local date, sent to the Inbox (kind `finance_briefing`, link `/finance`) and by email when `briefingEmail` is on (the "⋯" menu); `inboxAt` records when it went out. If the window is missed, the day is skipped and the next briefing is the next trading day's. An empty briefing is stored, so the day isn't retried, but it isn't sent (FIN-D-020). Until step 4, trial status isn't checked.
 - **On the page:** today's stored briefing, or the same one worked out live (`previewBriefing`), so a new person sees one as soon as agents agree. Holiday and weekend notes. Past briefings open in place.
 - **Ideas for you** (`lib/finance/ideas.ts`, FIN-D-019): up to 3 on the page and 1 in the briefing. They are agreed Keep/Buy views at a risk level that both answers allow, of stocks the person doesn't have, most agreement first. "Watch" adds the stock to the watch list. "I bought this" asks for the shares and adds it as a holding.
 
 Migration: `20270208000000_finance_briefing`.
+
+## Step 2b: fixes after the review of steps 0–2 (FIN-CR-006)
+
+- **Agreement numbers set by staff** (idea 19, FIN-D-022): `FinanceSettings` holds one row (id `default`) with the agreement needed, a manager agent's weight and the Sell bar; `FinanceSettingsChange` is the audit trail. `/superadmin/finance` edits them; `settleJob` and `giveVerdict` read them at the point of use.
+
+Migration: `20270209000000_finance_settings`.

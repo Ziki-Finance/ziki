@@ -41,10 +41,6 @@ export function AddHoldingForm() {
         Shares
       </label>
       <input id="add-shares" name="shares" inputMode="decimal" placeholder="Shares (empty = watch)" className={`${input} sm:w-44`} />
-      <label className="sr-only" htmlFor="add-cost">
-        Average price paid
-      </label>
-      <input id="add-cost" name="avgCost" inputMode="decimal" placeholder="Avg price ($, optional)" className={`${input} sm:w-40`} />
       <button type="submit" disabled={pending} className={primary}>
         {pending ? "Adding…" : "Add"}
       </button>

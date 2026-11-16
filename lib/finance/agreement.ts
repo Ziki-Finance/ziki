@@ -1,34 +1,18 @@
 import type { AgentLevel, FinanceCall, FinanceVerdictKind } from "@prisma/client";
 import { voteWeight } from "@/lib/governance";
+import type { FinanceSettingsValues } from "./settings";
 
 /**
  * When agents agree on a view (PRD §7.3, FIN-D-016, FIN-D-017). Pure, so the
- * rules are tested without a database.
+ * rules are tested without a database. The numbers themselves are staff-set
+ * (FIN-D-022, `lib/finance/settings.ts`) and passed in.
  */
-
-function envInt(name: string, fallback: number): number {
-  const n = Number(process.env[name]);
-  return Number.isInteger(n) && n > 0 ? n : fallback;
-}
-
-/** Weighted agree verdicts a view needs. */
-export function agreementNeeded(): number {
-  return envInt("FINANCE_AGREEMENT_NEEDED", 3);
-}
-
-/** The higher bar for a change to Sell. */
-export function sellAgreementNeeded(): number {
-  return envInt("FINANCE_SELL_AGREEMENT_NEEDED", 4);
-}
-
-/** What a manager agent's verdict counts: the platform's default managerVoteWeight. */
-export const FINANCE_MANAGER_VOTE_WEIGHT = 3;
 
 /** At most this many views per job (FIN-D-015). */
 export const MAX_VIEWS_PER_JOB = 3;
 
-export function verdictWeight(level: AgentLevel | null | undefined): number {
-  return voteWeight(level, FINANCE_MANAGER_VOTE_WEIGHT);
+export function verdictWeight(level: AgentLevel | null | undefined, settings: FinanceSettingsValues): number {
+  return voteWeight(level, settings.managerVoteWeight);
 }
 
 export type TallyVerdict = { ownerId: string; verdict: FinanceVerdictKind; weight: number };
@@ -66,8 +50,8 @@ export function isOpposing(a: FinanceCall, b: FinanceCall): boolean {
 }
 
 /** A change to Sell needs the higher bar. */
-export function neededFor(call: FinanceCall, previousCall: FinanceCall | null): number {
-  return call === "sell" && previousCall !== "sell" ? sellAgreementNeeded() : agreementNeeded();
+export function neededFor(call: FinanceCall, previousCall: FinanceCall | null, settings: FinanceSettingsValues): number {
+  return call === "sell" && previousCall !== "sell" ? settings.sellAgreementNeeded : settings.agreementNeeded;
 }
 
 export function reachesAgreement(t: Tally, needed: number): boolean {
@@ -85,10 +69,14 @@ export type Settlement =
  * with the most agree weight (the earliest on a tie). `divided` when an opposing
  * view also reached agreement.
  */
-export function settleViews(views: readonly CandidateView[], previousCall: FinanceCall | null): Settlement {
+export function settleViews(
+  views: readonly CandidateView[],
+  previousCall: FinanceCall | null,
+  settings: FinanceSettingsValues,
+): Settlement {
   const qualified = views
     .map((view) => ({ view, t: tally(view.verdicts) }))
-    .filter(({ view, t }) => reachesAgreement(t, neededFor(view.call, previousCall)))
+    .filter(({ view, t }) => reachesAgreement(t, neededFor(view.call, previousCall, settings)))
     .sort((a, b) => b.t.agree - a.t.agree || a.view.createdAt.getTime() - b.view.createdAt.getTime());
   const winner = qualified[0];
   if (!winner) return { agreed: false };
