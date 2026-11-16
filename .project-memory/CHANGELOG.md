@@ -127,3 +127,16 @@
 - **AFTER:** `next.config.ts` adds `@prisma/adapter-pg` to `serverExternalPackages`, so OpenNext's bundler resolves `pg` with the `workerd` condition and includes the real socket. The public DNS resolver in `ownership.ts` is created on first use. The CI job "Cloudflare Workers build" now fails if `class CloudflareSocket` is missing from the bundle.
 - **Acceptance:** CI green; after the deploy, `/api/health` returns 200 and the cron log no longer shows "Not implemented".
 - **Files:** next.config.ts, lib/security-checks/ownership.ts, .github/workflows/ci.yml, package.json (0.1.205 → 0.1.207; 0.1.206 is taken by the unmerged Finance commit FIN-CR-003).
+
+## INF-CR-006 — Move the platform sweeps from the Worker's cron to GitHub Actions
+- **Date:** 2026-11-16 · **Approval:** APPROVED (user: "Yes, move them") · **Implementation:** COMPLETED · **Verification:** PARTIAL (see below)
+- **BEFORE:** `wrangler.jsonc` had the Cron Trigger `* * * * *`. `cloudflare/worker.ts` `scheduled()` POSTed `/api/internal/cron` then `/api/v1/webhooks/dispatch` through the Worker. Each run used 600 ms – 1.66 s CPU (limit 10 ms), so most failed and Cloudflare warned that the CPU limit was hit (INF-I-008).
+- **APPROVED AFTER:** No Cron Trigger. The same `runPlatformSweeps()` runs on Node every 5 minutes from GitHub Actions.
+- **ACTUAL AFTER:**
+  - `.github/workflows/sweeps.yml` ("Platform sweeps"): `schedule */5 * * * *` plus manual run. Checks out `main`, passes only the secrets that are set (names in `scripts/cron/sweep-secrets.json`; `DATABASE_URL` required), installs, runs `pnpm cron:sweeps`. One run at a time.
+  - `scripts/cron/run-sweeps.ts`: runs the sweeps once, prints one line per sweep, reports failed sweeps as Actions warnings, exits 1 only if the run itself fails.
+  - `scripts/cron/server-only-shim.cjs`: lets Node import server modules (`server-only` throws outside the react-server condition, and that condition breaks React on plain Node). Same approach as `vitest.config`.
+  - `scripts/cron/set-github-sweep-secrets.mjs`: copies the listed secrets from `.env` to GitHub secrets on stdin, never printing them. `GITHUB_*` names are stored as `ZIKI_GITHUB_*` (GitHub forbids that prefix).
+  - `wrangler.jsonc` `triggers.crons` is `[]`, which removes the trigger on the next deploy. `cloudflare/worker.ts` only serves the app. `package.json` script `cron:sweeps`; version 0.1.210 → 0.1.211.
+- **Verification:** Locally, the full sweep module graph loads on Node with the shim, and `pnpm cron:sweeps` against an unreachable database runs every sweep (Finance included), reports each failure, and exits 0. Not yet run against Supabase: verify with a manual "Platform sweeps" run after merge, and check that Cloudflare shows no cron invocations after the deploy.
+- **Files:** .github/workflows/sweeps.yml, scripts/cron/*, cloudflare/worker.ts, wrangler.jsonc, instrumentation.ts (comment), package.json.

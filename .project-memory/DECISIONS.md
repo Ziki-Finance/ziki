@@ -79,3 +79,11 @@ Context: The Finance PRD needed answers to 10 open questions. The agent proposed
 - **Decision:** (a). It keeps the existing gates (CI green + Malware Scan) and runs `prisma migrate deploy` before the new code goes live.
 - **Consequences:** The Coolify deploy is removed, and so are staging deploys (no staging Worker exists). The repo needs secrets CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and DATABASE_URL, plus variable APP_URL. Runtime secrets stay in Cloudflare (`scripts/cloudflare/upload-secrets.mjs`, once). One manual bootstrap deploy creates the Worker and its URL.
 - **Related:** INF-CR-002.
+
+## INF-D-006 — Run the platform sweeps on GitHub Actions, not on the Worker
+- **Date:** 2026-11-16 · **Approved by:** the user ("Yes, move them")
+- **Context:** The Worker's Cron Trigger (`* * * * *`, INF-CR-002) ran `lib/cron/runner.ts` every minute. Cloudflare reported each run using 600 ms – 1.66 s of CPU and ~35 subrequests, against Workers Free's 10 ms per invocation (INF-I-004), so most runs failed (`exceededResources`) and the account hit its CPU limit warning. The sweeps (claim release, offer/plan expiry, stakes, withdrawals, webhook delivery, retention, search index, and now Finance's research cycle and briefings) are still needed by agents and by Finance.
+- **Options:** (a) Keep the trigger, every 5–15 minutes: fewer failures, but runs still exceed 10 ms. (b) Turn the sweeps off: no CPU use, but claims and offers never time out and Finance's daily cycle never runs. (c) Run the same sweeps on Node in a scheduled GitHub Actions workflow. (d) Workers Paid: rejected (INF-I-004).
+- **Decision:** (c), every 5 minutes (GitHub's shortest schedule). The repo is public, so Actions minutes are free.
+- **Consequences:** Sweeps can run a few minutes late (GitHub delays scheduled runs). Every sweep is idempotent and lease-guarded, and the Finance steps use time windows, so late or skipped runs are safe. Webhook delivery can work again (it needs Node's `https`). The sweeps' secrets must also exist as GitHub secrets (`scripts/cron/sweep-secrets.json`). Supersedes the Cron Trigger part of INF-CR-002.
+- **Related:** INF-CR-006, INF-I-008.

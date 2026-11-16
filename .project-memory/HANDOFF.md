@@ -4,27 +4,26 @@ _Updated 2026-11-16_
 
 **PROJECT:** ziki-finance. The Ziki issue tracker (Next.js 16 + Prisma + Postgres) on Supabase, deployed to Cloudflare Workers Free. The feature that must work is Ziki Finance (`docs/plans/finance-prd.md`, not built yet).
 
-**CURRENT POSITION**
-- Done: Supabase migrations (INF-CR-001). PBKDF2 password hashing (INF-CR-003). Workers code changes (INF-CR-002). Hyperdrive created. Auto-deploy workflow (INF-D-005). All GitHub secrets and APP_URL set. Memory repaired (INF-CR-004). Finance PRD v0.2 approved as a document (FIN-CR-001).
-- In progress: PR #1 (`feat/cloudflare-workers`) is green and waiting for the user to merge. Merging deploys.
-- Not started: runtime secrets upload (INF-T-006), Finance feature (FIN-CR-002 awaiting approval), RLS review (INF-T-005), email (INF-I-007).
+**CURRENT POSITION** (INF)
+- Done: Supabase migrations (INF-CR-001). PBKDF2 password hashing (INF-CR-003). Workers deploy from `main` (INF-CR-002, INF-D-005): live at `https://ziki-finance.ibuild-ai.workers.dev`, `/api/health` 200 after INF-CR-005. Runtime secrets uploaded. Memory repaired (INF-CR-004).
+- In progress: INF-CR-006, sweeps moved from the Worker's cron to GitHub Actions (branch `feat/sweeps-on-github-actions`, PR pending).
+- Not started: RLS review (INF-T-005), email (INF-I-007), measuring routes against 10 ms CPU (INF-T-007), `WEBHOOK_SECRET_KEY` (INF-I-008).
 
-**LATEST DECISIONS:** INF-D-001 session pooler; INF-D-002 Workers via OpenNext; INF-D-003 PBKDF2; INF-D-004 only Finance must work on Cloudflare; INF-D-005 GitHub Actions deploys main. Finance: FIN-D-001..FIN-D-011 (product defaults; FIN-D-011 = hidden /finance route).
+**LATEST DECISIONS:** INF-D-001 session pooler; INF-D-002 Workers via OpenNext; INF-D-003 PBKDF2; INF-D-004 only Finance must work on Cloudflare; INF-D-005 GitHub Actions deploys main; INF-D-006 sweeps run on GitHub Actions every 5 minutes.
 
-**WORK PERFORMED:** see CHANGELOG.md INF-CR-002 to INF-CR-004. Tests: 6 new hashing tests plus 432 security/auth tests passed locally. On PR #1 all 5 CI checks pass (lint/typecheck/test/build, CLI scenarios, end-to-end, malware scan, Cloudflare Workers build).
+**WORK PERFORMED:** see CHANGELOG.md INF-CR-002 to INF-CR-006.
 
 **OUTSTANDING ITEMS (priority order)**
-1. The user merges PR #1. The deploy job runs migrations, deploys and checks `/api/health`; the check is expected to fail until secrets exist.
-2. The user runs `node scripts/cloudflare/upload-secrets.mjs`, then re-runs the deploy, and adds `https://ziki-finance.ibuild-ai.workers.dev/api/auth/callback/google` to the Google OAuth client (INF-T-006).
+1. Merge the INF-CR-006 PR. Its deploy removes the Worker's Cron Trigger.
+2. The user runs `node scripts/cron/set-github-sweep-secrets.mjs`, then starts "Platform sweeps" by hand once (Actions tab) and checks the sweeps are `ok` (INF-T-008).
 3. Measure which routes exceed the 10 ms CPU limit (INF-T-007, INF-I-004).
-4. Finance: get approval for FIN-CR-002, then start release step 0.
-5. Commit `docs/plans/*` (Finance docs, currently untracked) once the user agrees.
+4. Set `WEBHOOK_SECRET_KEY` and email (INF-I-007, INF-I-008).
 
-**IMPORTANT CONSTRAINTS:** Follow `.project-memory/README.md` (prefixed IDs, add-only edits, one session per folder or worktree). Workers Free only (no paid plan). No AI-assistant attribution in commits, PRs or code. Never reseed or reset a database with real accounts. Never print or commit secrets. Don't change `PASSWORD_PEPPER` once users exist.
+**IMPORTANT CONSTRAINTS:** Follow `.project-memory/README.md` (prefixed IDs, add-only edits, one session per folder or worktree). Workers Free only (no paid plan). No AI-assistant attribution in commits, PRs or code. Never reseed or reset a database with real accounts. Never print or commit secrets. Don't change `PASSWORD_PEPPER` once users exist. Scheduled work runs in "Platform sweeps" (GitHub Actions), not on the Worker.
 
-**NEXT ACTION:** Merge PR #1, upload secrets, re-run the deploy. Expected: `https://ziki-finance.ibuild-ai.workers.dev/api/health` returns 200.
+**NEXT ACTION:** Items 1 and 2. Expected: a manual "Platform sweeps" run lists every sweep, Finance included, as `ok`, and Cloudflare shows no more cron invocations.
 
-**Git:** branch `feat/cloudflare-workers` (see `git log`); base `main` at `c9726d1a`.
+**Git:** INF-CR-006 on branch `feat/sweeps-on-github-actions`.
 
 ## FIN: Ziki Finance handoff (2026-11-16)
 
