@@ -29,3 +29,4 @@
   - Not Cloudflare-related but still a launch blocker: PRD section 10 legal review.
 - **INF-I-006** (2026-11-16): The dev machine has little disk (about 1.9 GB free after deleting `.next`) and 12 GB RAM (`tsc` needs `--max-old-space-size`). OpenNext warns that Windows is not fully supported. Builds for Cloudflare run on GitHub Actions (Linux).
 - **INF-I-007** (2026-11-16): No `SMTP_*` settings in `.env`; email (and so Finance briefings and alerts) is not configured.
+- **INF-I-008** (2026-11-16): The Worker's every-minute Cron Trigger used 600 ms – 1.66 s CPU per run (~35 subrequests) against the 10 ms Free limit; most runs failed and Cloudflare reported the CPU limit hit. Resolved by INF-CR-006 (sweeps on GitHub Actions). Related gaps: `WEBHOOK_SECRET_KEY` is in neither `.env` nor the Cloudflare secrets, so webhook signing fails until it is set; `scripts/cloudflare/upload-secrets.mjs` sends `SMTP_PASSWORD` while the code reads `SMTP_PASS`.

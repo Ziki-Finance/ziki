@@ -1,7 +1,8 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // CR-002: Workers have no long-running process and no I/O outside a request.
-    // The every-minute Cron Trigger (cloudflare/worker.ts) runs the sweeps there instead.
+    // For the Workers deploy, GitHub Actions runs the sweeps on Node instead
+    // (.github/workflows/sweeps.yml, INF-CR-006).
     const { isCloudflareWorkers } = await import("@/lib/runtime");
     if (isCloudflareWorkers()) return;
 

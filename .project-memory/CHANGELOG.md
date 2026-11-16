@@ -82,7 +82,7 @@
   - Idea 22: "Just watch instead" beside the ticker box in setup adds the typed stock with no shares.
   - Idea 24: `isBriefingTime` accepts 07:00–09:59 local (`BRIEFING_WINDOW_HOURS = 3`); after 10:00 the day is skipped, and `FinanceBriefing.inboxAt` records when it went out.
   - Idea 27 part 1: the "More" link and the average-price field are gone from setup and "+ Add".
-  - Tests updated and added: `tests/finance/finance-agreement.test.ts` (staff-set numbers), `tests/finance/finance-settings.test.ts` (validation), `tests/finance/finance-briefing.test.ts` (window). Version 0.1.210 → 0.1.211. Docs: `docs/finance.md`, `docs/plans/finance-prd.md`.
+  - Tests updated and added: `tests/finance/finance-agreement.test.ts` (staff-set numbers), `tests/finance/finance-settings.test.ts` (validation), `tests/finance/finance-briefing.test.ts` (window). Version 0.1.210 → 0.1.211, then 0.1.212 when the merge with `main` found 0.1.211 already taken by the sweeps move. Docs: `docs/finance.md`, `docs/plans/finance-prd.md`.
   - **Verification (2026-11-16):**
     - **Full run (first):** `pnpm verify:ready`, revision `e84c26d0` + uncommitted changes, input state `3bf9ee4c8ef8`, Node 24.10.0, 8 CPUs. lint passed (0 errors, 33 warnings, none in a file this change touches). typecheck failed (exit 134) — an out-of-memory crash at the end with "no errors" printed, so it proved nothing. unit failed 5 of 2236: 4 in `tests/finance/finance-research.test.ts` (the fake db had no `financeSettings.findUnique`, so `settleJob` and `giveVerdict` threw) and 1 in `tests/security/security-checks.test.ts` (the PDF/Inter font test, 14.5 s, a load timeout; it is not in this area and passed in earlier runs).
     - **Repairs:** added `financeSettings.findUnique → null` (the defaults) to the fake db in `tests/finance/finance-research.test.ts`. Ran `tsc --noEmit` with a 6 GB heap for the one question the OOM left open, which showed 2 real type errors: `saveFinanceSettings` took `Db` (which includes `TransactionClient`, with no `$transaction`) and now takes `PrismaClient`, as `undoAuditEvent` already does.
@@ -151,10 +151,24 @@
 - **Acceptance:** CI green; after the deploy, `/api/health` returns 200 and the cron log no longer shows "Not implemented".
 - **Files:** next.config.ts, lib/security-checks/ownership.ts, .github/workflows/ci.yml, package.json (0.1.205 → 0.1.207; 0.1.206 is taken by the unmerged Finance commit FIN-CR-003).
 
-## INF-CR-006 — Track the project continuity protocol and load it from AGENTS.md
+## INF-CR-006 — Move the platform sweeps from the Worker's cron to GitHub Actions
+- **Date:** 2026-11-16 · **Approval:** APPROVED (user: "Yes, move them") · **Implementation:** COMPLETED · **Verification:** PARTIAL (see below)
+- **BEFORE:** `wrangler.jsonc` had the Cron Trigger `* * * * *`. `cloudflare/worker.ts` `scheduled()` POSTed `/api/internal/cron` then `/api/v1/webhooks/dispatch` through the Worker. Each run used 600 ms – 1.66 s CPU (limit 10 ms), so most failed and Cloudflare warned that the CPU limit was hit (INF-I-008).
+- **APPROVED AFTER:** No Cron Trigger. The same `runPlatformSweeps()` runs on Node every 5 minutes from GitHub Actions.
+- **ACTUAL AFTER:**
+  - `.github/workflows/sweeps.yml` ("Platform sweeps"): `schedule */5 * * * *` plus manual run. Checks out `main`, passes only the secrets that are set (names in `scripts/cron/sweep-secrets.json`; `DATABASE_URL` required), installs, runs `pnpm cron:sweeps`. One run at a time.
+  - `scripts/cron/run-sweeps.ts`: runs the sweeps once, prints one line per sweep, reports failed sweeps as Actions warnings, exits 1 only if the run itself fails.
+  - `scripts/cron/server-only-shim.js`: lets Node import server modules (`server-only` throws outside the react-server condition, and that condition breaks React on plain Node). Same approach as `vitest.config`.
+  - `scripts/cron/set-github-sweep-secrets.mjs`: copies the listed secrets from `.env` to GitHub secrets on stdin, never printing them. `GITHUB_*` names are stored as `ZIKI_GITHUB_*` (GitHub forbids that prefix).
+  - `wrangler.jsonc` `triggers.crons` is `[]`, which removes the trigger on the next deploy. `cloudflare/worker.ts` only serves the app. `package.json` script `cron:sweeps`; version 0.1.210 → 0.1.211.
+- **Verification:** Locally, the full sweep module graph loads on Node with the shim, and `pnpm cron:sweeps` against an unreachable database runs every sweep (Finance included), reports each failure, and exits 0. Not yet run against Supabase: verify with a manual "Platform sweeps" run after merge, and check that Cloudflare shows no cron invocations after the deploy.
+- **Files:** .github/workflows/sweeps.yml, scripts/cron/*, cloudflare/worker.ts, wrangler.jsonc, instrumentation.ts (comment), package.json.
+
+## INF-CR-007 — Track the project continuity protocol and load it from AGENTS.md
 - **Date:** 2026-11-16 · **Approval:** APPROVED (user: "track claude.md and fix then commit") · **Implementation:** COMPLETED · **Verification:** see below
 - **BEFORE:** `CLAUDE.md` (the project continuity protocol) was untracked, so it existed in one checkout only and no agent was told to read it. Every Markdown marker in it was backslash-escaped (`\#`, `\-`, `\*\*`), so it rendered as literal backslashes.
 - **AFTER:** `CLAUDE.md` is tracked and reads as normal Markdown (escapes removed, runs of blank lines collapsed). `AGENTS.md` points at it directly under the CONTRIBUTING.md line and says it applies in full, including that a harness may not load it on its own.
 - **Why:** continuity rules must reach every agent and every checkout, not just the one that created the file.
 - **Files:** `CLAUDE.md` (new), `AGENTS.md`.
 - **Verification:** no backslash-escaped markers remain in `CLAUDE.md` (grep); the wording is unchanged apart from the escaping and blank lines. No code, so no test run.
+- **Note:** renumbered from INF-CR-006 when INF-CR-006 (the sweeps move) landed on `main` first; `INF-T-008` became `INF-T-009` the same way.

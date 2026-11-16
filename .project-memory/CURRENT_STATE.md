@@ -12,9 +12,9 @@ The Ziki issue tracker (Next.js 16, Prisma 6, PostgreSQL) runs on a **Supabase**
 - All 235 migrations applied 2026-11-16 (INF-CR-001, verified). Not seeded.
 
 ## Cloudflare (INF)
-- Workers via OpenNext, Free plan only (INF-D-002, INF-I-004). Code done (INF-CR-002) on branch `feat/cloudflare-workers`, PR #1 (Ziki-Finance/ziki), all checks green.
-- Deploys from `main` through GitHub Actions after CI and the malware scan (INF-D-005). App URL: `https://ziki-finance.ibuild-ai.workers.dev`. Hyperdrive `ziki-supabase` exists.
-- Not yet deployed. Runtime secrets are uploaded after the first deploy (INF-T-006).
+- Workers via OpenNext, Free plan only (INF-D-002, INF-I-004). Live at `https://ziki-finance.ibuild-ai.workers.dev`; `/api/health` returns 200 since INF-CR-005 (2026-11-16). Runtime secrets uploaded. Hyperdrive `ziki-supabase` in use.
+- Deploys from `main` through GitHub Actions after CI and the malware scan (INF-D-005).
+- Platform sweeps run every 5 minutes on GitHub Actions, not on the Worker (INF-D-006, INF-CR-006; pending merge and first run, INF-T-008).
 
 ## Finance feature (FIN)
 - PRD v0.2 and wireframes approved as documents (FIN-CR-001). The v1 plan as 17 ideas is PROPOSED (FIN-CR-002). Workers-Free risks for it: INF-I-005.
