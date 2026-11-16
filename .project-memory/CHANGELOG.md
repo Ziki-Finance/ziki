@@ -173,3 +173,8 @@
 - **Files:** `CLAUDE.md` (new), `AGENTS.md`.
 - **Verification:** no backslash-escaped markers remain in `CLAUDE.md` (grep); the wording is unchanged apart from the escaping and blank lines. No code, so no test run.
 - **Note:** renumbered from INF-CR-006 when INF-CR-006 (the sweeps move) landed on `main` first; `INF-T-008` became `INF-T-009` the same way.
+
+### INF-CR-006 addendum (2026-11-16): name each secret in the sweeps workflow
+- **Found after merge (PR #7):** GitHub held back every run of `sweeps.yml` ("GitHub detected that this workflow file may be malicious ... will not run until someone with write access approves it"), so the 5-minute schedule never ran. Cause: the step that loaded `${{ toJSON(secrets) }}`, a known secret-exfiltration pattern (INF-I-009).
+- **Change:** that step is removed. The "Run the sweeps" step lists each secret from `scripts/cron/sweep-secrets.json` by name, removes the empty ones, and fails if `DATABASE_URL` is missing. Version 0.1.212 → 0.1.213.
+- **Verification:** PENDING: after merge, a manual run must start without the approval hold and list the sweeps.
