@@ -30,7 +30,7 @@
 - `lib/finance.ts` (words, notice, parsing), `lib/finance/directory.ts` (built-in list of about 140 US stocks and ETFs, FIN-D-013), `lib/finance/market-data.ts` (provider interface), `lib/finance/holdings.ts`, `lib/finance/clearance.ts`, `app/actions/finance.ts`.
 - Pages: `app/(app)/finance/{layout,page}.tsx` (noindex; welcome signed out, setup, then the Finance page), `app/(app)/finance/[ticker]/page.tsx`, staff page `app/(app)/superadmin/finance/page.tsx` (plus a staff sidebar link). Components in `components/finance/`.
 - `middleware.ts`: only the exact path `/finance` is public. `app/(app)/layout.tsx`: a guest there gets a bare shell, like `/security`.
-- Docs: `docs/finance.md`. Version 0.1.205 → 0.1.206.
+- Docs: `docs/finance.md`. Version 0.1.205 → 0.1.206, then 0.1.208 after merging main (main had moved to 0.1.207 with INF-CR-005).
 - Not done in step 0 (from the PRD's phase 0 list): the legal opinion and the data-provider choice are business tasks, still open (FIN-D-013, FIN-D-014).
 - **Verification:** `tsc --noEmit` exit 0. ESLint clean on the changed files. `vitest run tests/finance` 24/24 pass. Full suite: 2179 passed and 2 timed out under load (`security-checks.test.ts` PDF font test, existing code; the Finance file-scan test, now given 60 s, passes). Not run: the migration against a database, the pages in a browser, e2e. Nothing deployed.
 
@@ -93,3 +93,10 @@
 - **AFTER:** Prefixed IDs (`FIN-`, `INF-`) in every memory file and in the references in `docs/plans/*.md`. Lost infrastructure records rebuilt from the session that made them. Rules for concurrent work in `.project-memory/README.md`.
 - **Not recoverable:** the Finance session's original task list (only FIN-CR-002 survived; a "T-004 legal review" was referenced) and the text of FIN-R-001..FIN-R-005. Marked unknown.
 - **Verification:** no unprefixed record IDs remain in `.project-memory/` or `docs/plans/` (grep).
+
+## INF-CR-005 — Make the database and security-check routes work on Workers
+- **Date:** 2026-11-16 · **Approval:** APPROVED (user reported "api health still fails" after the deploy; fixing the deploy is within INF-CR-002's approved scope) · **Implementation:** COMPLETED · **Verification:** PENDING (CI on the PR, then `/api/health` after the deploy)
+- **BEFORE:** The second deploy (run 43812836444) went live, and the runtime secrets were uploaded, but `/api/health` returned 503 `{"status":"degraded"}`. The Worker logs (`wrangler tail`) showed two errors. (1) Every query failed with `prisma:error b2 is not a constructor`: webpack bundled `pg` with Node conditions, so `pg-cloudflare` resolved to its empty module and `new CloudflareSocket()` was undefined. (2) `lib/security-checks/ownership.ts` called `dns.Resolver.setServers` at import time, which Workers does not implement ("Not implemented"), so `/api/internal/cron` returned 500 on every run.
+- **AFTER:** `next.config.ts` adds `@prisma/adapter-pg` to `serverExternalPackages`, so OpenNext's bundler resolves `pg` with the `workerd` condition and includes the real socket. The public DNS resolver in `ownership.ts` is created on first use. The CI job "Cloudflare Workers build" now fails if `class CloudflareSocket` is missing from the bundle.
+- **Acceptance:** CI green; after the deploy, `/api/health` returns 200 and the cron log no longer shows "Not implemented".
+- **Files:** next.config.ts, lib/security-checks/ownership.ts, .github/workflows/ci.yml, package.json (0.1.205 → 0.1.207; 0.1.206 is taken by the unmerged Finance commit FIN-CR-003).

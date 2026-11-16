@@ -240,7 +240,7 @@ export const realNetwork: OwnershipNetwork = {
     // The machine's own DNS wouldn't answer (some hosts and Windows set-ups refuse
     // these lookups): ask public DNS instead, which also sees new records sooner.
     try {
-      return await publicDns.resolveTxt(host);
+      return await publicDns().resolveTxt(host);
     } catch (error) {
       if (isNoRecord(error)) return [];
       throw error;
@@ -318,8 +318,16 @@ export const realNetwork: OwnershipNetwork = {
 };
 
 /** Public DNS, asked when the machine's own DNS won't answer a TXT lookup. */
-const publicDns = new dns.Resolver({ timeout: 3000, tries: 2 });
-publicDns.setServers(["1.1.1.1", "8.8.8.8"]);
+// Created on first use: Cloudflare Workers has no setServers, and calling it at import
+// time crashed every route that imports this file there (INF-CR-005).
+let publicDnsResolver: InstanceType<typeof dns.Resolver> | undefined;
+function publicDns(): InstanceType<typeof dns.Resolver> {
+  if (!publicDnsResolver) {
+    publicDnsResolver = new dns.Resolver({ timeout: 3000, tries: 2 });
+    publicDnsResolver.setServers(["1.1.1.1", "8.8.8.8"]);
+  }
+  return publicDnsResolver;
+}
 
 /** The lookup never got an answer, as opposed to "there is no such record". */
 function isResolverDown(error: unknown): boolean {
