@@ -31,8 +31,6 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files — never commit secrets
-.env
-.env.*
 !.env.example
 
 # lockfiles from other package managers
@@ -67,3 +65,4 @@ next-env.d.ts
 .dev.vars
 cloudflare-env.d.ts
 .verify-output.txt
+config.bat
