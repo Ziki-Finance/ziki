@@ -2,11 +2,13 @@
 
 _Updated 2026-11-16_
 
-**PROJECT:** ziki-finance. The Ziki issue tracker (Next.js 16 + Prisma + Postgres) on Supabase, deployed to Cloudflare Workers Free. The feature that must work is Ziki Finance (`docs/plans/finance-prd.md`, not built yet).
+> **Out of date until INF-CR-008 (2026-11-16).** The sections below are kept as history and some of them are wrong now — they still say Finance was never built and that steps 0–2 were unmerged. Read **"Reconciled state"**, the last section of this file, for what is true.
+
+**PROJECT:** ziki-finance. The Ziki issue tracker (Next.js 16 + Prisma + Postgres) on Supabase, deployed to Cloudflare Workers Free. The feature that must work is Ziki Finance (`docs/plans/finance-prd.md`; release steps 0–2 and step 2b PRs A and B are in `main`, unit-tested only).
 
 **CURRENT POSITION** (INF)
 - Done: Supabase migrations (INF-CR-001). PBKDF2 password hashing (INF-CR-003). Workers deploy from `main` (INF-CR-002, INF-D-005): live at `https://ziki-finance.ibuild-ai.workers.dev`, `/api/health` 200 after INF-CR-005. Runtime secrets uploaded. Memory repaired (INF-CR-004).
-- In progress: INF-CR-006, sweeps moved from the Worker's cron to GitHub Actions (branch `feat/sweeps-on-github-actions`, PR pending).
+- Done since: INF-CR-006 (sweeps ran on GitHub Actions, PRs #7 and #9, verified 2026-11-16) and INF-CR-007 (`CLAUDE.md` tracked and loaded from `AGENTS.md`).
 - Not started: RLS review (INF-T-005), email (INF-I-007), measuring routes against 10 ms CPU (INF-T-007), `WEBHOOK_SECRET_KEY` (INF-I-008).
 
 **LATEST DECISIONS:** INF-D-001 session pooler; INF-D-002 Workers via OpenNext; INF-D-003 PBKDF2; INF-D-004 only Finance must work on Cloudflare; INF-D-005 GitHub Actions deploys main; INF-D-006 sweeps run on GitHub Actions every 5 minutes.
@@ -197,3 +199,27 @@ Needs a disposable test database — **never** the shared dev one and never prod
 - No assistant attribution anywhere, ever (commits, PRs, code, docs).
 - Ask before opening a PR, before deleting a branch, and before touching anything outside this worktree.
 - Write the whole change first; run the full verification once at the end, fix everything together, recheck — don't run tests between every edit (`AGENTS.md` → Testing). On this resource-constrained box, run lint and typecheck **separately** if the combined `pnpm verify:ready` crashes; it is not a code problem, it is this machine.
+
+## Reconciled state (2026-11-16, INF-CR-008)
+
+Read this section first; everything above it is history, and the parts listed under "What was wrong" are no longer true.
+
+**What was wrong.** This file still said Finance was "not built yet", that steps 0–2 sat on unmerged stacked branches, and that PR #1 awaited merge. None of that had been true for hours. The accurate handoff existed only in a worktree (.claude/worktrees/finance-step1/.project-memory/HANDOFF.md), so the main checkout misled anyone who read it.
+
+**What is true now** (checked against `git log origin/main` and `gh pr list` on 2026-11-16):
+- Merged into `main`: PR #1 (Workers deploy), #3 (step 0 foundations), #6 (steps 1 and 2; #5 had merged into the step 0 branch), #7 and #9 (sweeps on GitHub Actions), #8 (step 2b PR A: ideas 19, 22, 24, 27 part 1), #10 (memory records for the sweeps), #11 (step 2b PR B: idea 18 Finnhub market data, idea 21 overall/market lines, idea 27 parts 2–3 profit), #12 (an unlisted `/finance/demo` page showing the finished product with made-up data).
+- `main` is at `c51b9899`, version 0.1.216.
+- `CLAUDE.md` is tracked and `AGENTS.md` points at it (INF-CR-007). There was nothing left to commit for that pairing in the main checkout: the copies there were byte-identical to `main`'s, and the stale untracked duplicate was deleted.
+- Finance migrations in `main`, none ever applied to a database: `20270206000000_finance_foundations`, `20270207000000_finance_research`, `20270208000000_finance_briefing`, `20270209000000_finance_settings` (PR A), `20270210100000_finance_holding_cost` (PR B).
+
+**Still not done, in priority order:**
+1. Step 2b PR C (ideas 20 and 26) and PR D (idea 28). PR D is independent and can go first; PR C needs two migrations and the shortlist scope written down in the section above.
+2. FIN-T-007/FIN-T-009/FIN-T-013: nothing Finance has ever run for real. No migration has touched a database, no page has been opened in a browser, the worker has never run against a server, there is no email (INF-I-007), and no Finnhub key has ever been in this repo (FIN-T-020), so the live provider path is unexercised.
+3. The real `pnpm verify:ready` on a less-constrained machine. CI is green on `main`; this box's combined lint+typecheck run crashes for lack of disk and RAM, which is the machine, not the code.
+4. INF-T-007/INF-I-004: Workers Free allows 10 ms CPU per request and no route has been measured against it.
+
+**Branches.** `feat/finance-demo-page` is merged (PR #12) and can go. Safe to delete once the user confirms, all now merged or superseded: `feat/finance-step1-agent-research` (holds an old INF-CR-005 commit already in `main`), `feat/finance-step0-foundations`, `feat/finance-step1-research`, `feat/finance-step2-briefing`, `feat/finance-step2b`, `feat/finance-step2b-a`, `feat/finance-step2b-b`.
+
+**Worktrees.** `.claude/worktrees/finance-step1` (merged PR #11 work), `.claude/worktrees/finance-step2b-a` (had uncommitted changes when last checked), `.claude/worktrees/sweeps` (merged as PR #10). Check for uncommitted changes before removing any of them, and ask first.
+
+**NEXT ACTION:** start PR C on a fresh branch off `origin/main`, or PR D if a demo is wanted first. Either way start from 0.1.216 and raise the version.
