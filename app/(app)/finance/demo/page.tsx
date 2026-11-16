@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FINANCE_FOOTER, RISK_LEVEL_LABEL, agreementWords, tickerPath } from "@/lib/finance";
+import { FINANCE_FOOTER, RISK_LEVEL_LABEL, agreementWords } from "@/lib/finance";
 import type { BriefingContent } from "@/lib/finance/briefing";
 import { BriefingView } from "@/components/finance/briefing-view";
 import { FinanceFooter } from "@/components/finance/finance-footer";
@@ -94,12 +94,14 @@ const yesterday: BriefingContent = {
   waiting: [],
 };
 
+// Two of them open a holding page with example data (a down one and an up one);
+// the rest are plain text, because they have no page in the demo.
 const holdings = [
-  { symbol: "ACME", name: "Acme Corp", shares: "120", view: "consider_selling" as const, owned: true, why: "Sales fell for the second quarter and two big customers left." },
-  { symbol: "CTSO", name: "Contoso", shares: "40", view: "buy_keep" as const, owned: true, why: "Steady sales growth and no new debt." },
-  { symbol: "FBK", name: "Fabrikam", shares: "15", view: "buy_keep" as const, owned: true, why: "Margins held up through a weak quarter for the industry." },
-  { symbol: "VOO", name: "Vanguard S&P 500 ETF", shares: "12", view: "buy_keep" as const, owned: true, why: "Broad market fund; no company news that would change the view." },
-  { symbol: "NWND", name: "Northwind", shares: "watching only", view: "buy_keep" as const, owned: false, why: "Growing steadily with low debt, and still at a fair price." },
+  { symbol: "ACME", name: "Acme Corp", shares: "120", view: "consider_selling" as const, owned: true, why: "Sales fell for the second quarter and two big customers left.", detail: true },
+  { symbol: "CTSO", name: "Contoso", shares: "40", view: "buy_keep" as const, owned: true, why: "Steady sales growth and no new debt.", detail: true },
+  { symbol: "FBK", name: "Fabrikam", shares: "15", view: "buy_keep" as const, owned: true, why: "Margins held up through a weak quarter for the industry.", detail: false },
+  { symbol: "VOO", name: "Vanguard S&P 500 ETF", shares: "12", view: "buy_keep" as const, owned: true, why: "Broad market fund; no company news that would change the view.", detail: false },
+  { symbol: "NWND", name: "Northwind", shares: "watching only", view: "buy_keep" as const, owned: false, why: "Growing steadily with low debt, and still at a fair price.", detail: false },
 ];
 
 export default function FinanceDemoPage() {
@@ -114,7 +116,8 @@ export default function FinanceDemoPage() {
         </div>
         <p className="text-sm text-zk-text2">
           What a person sees after a few nights: agents have reviewed their stocks, agreed on a view, and this
-          morning&apos;s briefing is waiting. Every company, price and agent count below is made up.
+          morning&apos;s briefing is waiting. Every company, price and agent count below is made up. ACME and CTSO
+          open with example data, one down and one up.
         </p>
       </header>
 
@@ -147,10 +150,17 @@ export default function FinanceDemoPage() {
               {holdings.map((h, i) => (
                 <tr key={h.symbol} className="border-b border-dashed border-zk-border last:border-0">
                   <td className="py-2 pr-2">
-                    <Link href={tickerPath(h.symbol)} className="hover:underline">
-                      <span className="font-mono font-semibold text-zk-text">{h.symbol}</span>{" "}
-                      <span className="text-zk-text2">{h.name}</span>
-                    </Link>
+                    {h.detail ? (
+                      <Link href={`/finance/demo/${h.symbol}`} className="hover:underline">
+                        <span className="font-mono font-semibold text-zk-text">{h.symbol}</span>{" "}
+                        <span className="text-zk-text2">{h.name}</span>
+                      </Link>
+                    ) : (
+                      <span>
+                        <span className="font-mono font-semibold text-zk-text">{h.symbol}</span>{" "}
+                        <span className="text-zk-text2">{h.name}</span>
+                      </span>
+                    )}
                   </td>
                   <td className="py-2 pr-2 text-zk-text2">{h.shares}</td>
                   <td className="py-2 pr-2 text-zk-muted">{["+0.4%", "−0.8%", "+1.1%", "+0.6%", "+2.3%"][i]}</td>
