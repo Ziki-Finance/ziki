@@ -87,6 +87,41 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm build
 
+  # CR-002: the Cloudflare Workers bundle (OpenNext), so a pull request that breaks it fails
+  # here, before main's deploy. Builds only; nothing is deployed.
+  cloudflare-build:
+    name: Cloudflare Workers build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+      AUTH_SECRET: "ci-build-secret-dummy-must-be-long-enough-32-chars"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NODE_OPTIONS: "--max-old-space-size=6144"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for Cloudflare Workers
+        run: pnpm cf:build
+
+      - name: Report the Worker bundle size
+        run: du -sh .open-next/worker.js .open-next/server-functions/default .open-next/assets || true
+
   # The CLI scenarios (cli/tests) drive the real agent API through `pnpm ziki`.
   # This is where they are required: locally they run only for changes to the
   # API they exercise (AGENTS.md, "CLI tests"). A disposable database, one dev
