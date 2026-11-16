@@ -1,12 +1,13 @@
 import type { FinanceCall, FinanceHorizon, FinanceRisk, FinanceRiskComfort, Prisma, PrismaClient } from "@prisma/client";
 import { expireUnreadCounts } from "@/lib/cache-tags";
-import { FINANCE_FOOTER, FINANCE_PATH, RISK_LEVEL_LABEL, agreementWords, callLabel, profileWords } from "@/lib/finance";
+import { FINANCE_FOOTER, FINANCE_PATH, RISK_LEVEL_LABEL, agreementWords, callLabel, profileWords, signedPercent } from "@/lib/finance";
 import { logger } from "@/lib/logger";
 import { canSendMail, sendMail } from "@/lib/mail";
 import { absoluteUrl } from "@/lib/site-url";
 import { isMarketHoliday, zonedParts } from "./calendar";
 import { IDEAS_IN_BRIEFING, ideasFor, type Idea } from "./ideas";
-import { currentViews, type CurrentView } from "./research";
+import { dayChange, portfolioChange, recentBars } from "./prices";
+import { MARKET_SYMBOL, currentViews, type CurrentView } from "./research";
 
 /**
  * The daily briefing (FIN-CR-005, ideas 10 and 11; PRD §6.4).
@@ -26,12 +27,19 @@ export const BRIEFING_HOUR = 7;
 export const BRIEFING_WINDOW_HOURS = 3;
 export const BRIEFING_KIND = "finance_briefing";
 
+/** How far back the briefing looks for the two closes its opening and closing lines need (idea 21). */
+export const PRICE_LOOKBACK_DAYS = 7;
+
 export type BriefingLine = { symbol: string; name: string; call: FinanceCall; risk: FinanceRisk; reason: string; agentsAgree: number; agentsTotal: number; notReviewedToday: boolean };
 
 export type BriefingContent = {
   date: string;
   /** "Tue 17 Nov". */
   dateWords: string;
+  /** "Overall: your holdings rose 1.2% yesterday (S&P 500: +0.8%)"; null when prices are missing (idea 21). */
+  overall: string | null;
+  /** One plain sentence about the market, built from the S&P 500's move; null when it is missing (idea 21). */
+  market: string | null;
   /** Owned stocks the agents say to consider selling or sell. */
   needsLook: BriefingLine[];
   /** Owned stocks to keep. */
@@ -43,7 +51,31 @@ export type BriefingContent = {
   newIdea: (Omit<Idea, "agreedAt"> & { fits: string }) | null;
 };
 
-export type BriefingHolding = { tickerId: string; symbol: string; name: string; owned: boolean };
+export type BriefingHolding = { tickerId: string; symbol: string; name: string; owned: boolean; shares: number | null };
+
+/** The two moves the briefing's opening and closing lines use (idea 21). */
+export type BriefingPrices = { holdingsPct: number | null; marketPct: number | null };
+
+const NO_PRICES: BriefingPrices = { holdingsPct: null, marketPct: null };
+
+/**
+ * "Overall: your holdings rose 1.2% yesterday (S&P 500: +0.8%)". Worked out from
+ * shares and closing prices, so it says what happened, never what to do
+ * (FIN-D-018). Left out entirely when the person's own change is unknown.
+ */
+export function overallLine(holdingsPct: number | null, marketPct: number | null): string | null {
+  if (holdingsPct === null) return null;
+  const rose = holdingsPct >= 0;
+  const market = marketPct === null ? "" : ` (S&P 500: ${signedPercent(marketPct)})`;
+  return `Overall: your holdings ${rose ? "rose" : "fell"} ${Math.abs(holdingsPct).toFixed(1)}% yesterday${market}`;
+}
+
+/** One plain sentence about the market. Null when its move isn't known. */
+export function marketLine(marketPct: number | null): string | null {
+  if (marketPct === null) return null;
+  if (Math.abs(marketPct) < 0.05) return "The market barely moved yesterday: the S&P 500 ended about where it started.";
+  return `The market was ${marketPct > 0 ? "up" : "down"} yesterday: the S&P 500 ${marketPct > 0 ? "rose" : "fell"} ${Math.abs(marketPct).toFixed(1)}%.`;
+}
 
 /** "Tue 17 Nov" for a "YYYY-MM-DD". */
 export function dateWords(date: string): string {
@@ -57,8 +89,19 @@ export function composeBriefing(
   views: ReadonlyMap<string, CurrentView>,
   idea: Idea | null,
   profile: { riskComfort: FinanceRiskComfort; horizon: FinanceHorizon },
+  prices: BriefingPrices = NO_PRICES,
 ): { content: BriefingContent; headline: string; needsLook: boolean; hasViews: boolean } {
-  const content: BriefingContent = { date, dateWords: dateWords(date), needsLook: [], allGood: [], watching: [], waiting: [], newIdea: null };
+  const content: BriefingContent = {
+    date,
+    dateWords: dateWords(date),
+    overall: overallLine(prices.holdingsPct, prices.marketPct),
+    market: marketLine(prices.marketPct),
+    needsLook: [],
+    allGood: [],
+    watching: [],
+    waiting: [],
+    newIdea: null,
+  };
   for (const h of holdings) {
     const view = views.get(h.tickerId);
     if (!view) {
@@ -107,6 +150,7 @@ const label = (l: BriefingLine) => `${l.name} (${l.symbol})`;
 /** The briefing as plain text, for email. The same content as the page and the Inbox. */
 export function briefingText(content: BriefingContent): string {
   const out: string[] = [`Good morning. Here's your portfolio for ${content.dateWords}.`, ""];
+  if (content.overall) out.push(content.overall, "");
   if (content.needsLook.length > 0) {
     out.push(`Needs a look (${content.needsLook.length})`);
     for (const l of content.needsLook) {
@@ -127,6 +171,7 @@ export function briefingText(content: BriefingContent): string {
     out.push("New idea (1)", `  • ${i.name} (${i.symbol}): ${i.reason} Risk: ${RISK_LEVEL_LABEL[i.risk]}. Fits a ${i.fits} profile.`, "");
   }
   if (content.waiting.length > 0) out.push(`Still being reviewed: ${content.waiting.map((w) => w.symbol).join(", ")}.`, "");
+  if (content.market) out.push(content.market, "");
   out.push(`Open Ziki Finance: ${absoluteUrl(FINANCE_PATH)}`, "", FINANCE_FOOTER);
   return out.join("\n");
 }
@@ -138,21 +183,53 @@ async function holdingsOf(db: Db, userId: string): Promise<BriefingHolding[]> {
     select: { shares: true, ticker: { select: { id: true, symbol: true, name: true } } },
     orderBy: { ticker: { symbol: "asc" } },
   });
-  return rows.map((r) => ({ tickerId: r.ticker.id, symbol: r.ticker.symbol, name: r.ticker.name, owned: r.shares !== null }));
+  return rows.map((r) => ({
+    tickerId: r.ticker.id,
+    symbol: r.ticker.symbol,
+    name: r.ticker.name,
+    owned: r.shares !== null,
+    shares: r.shares === null ? null : Number(r.shares),
+  }));
+}
+
+/**
+ * The two moves the briefing's opening and closing lines need, from the closes
+ * already recorded (idea 21). No provider call, so a briefing costs nothing, and
+ * a missing close simply leaves its line out.
+ */
+async function pricesOf(db: Db, holdings: readonly BriefingHolding[], now: Date): Promise<BriefingPrices> {
+  const market = await db.financeTicker.findUnique({ where: { symbol: MARKET_SYMBOL }, select: { id: true } });
+  const ids = [...new Set([...holdings.map((h) => h.tickerId), ...(market ? [market.id] : [])])];
+  const bars = await recentBars(db, ids, PRICE_LOOKBACK_DAYS, now);
+  return {
+    holdingsPct: portfolioChange(
+      holdings.filter((h) => h.shares !== null),
+      bars,
+    ),
+    marketPct: market ? dayChange(bars.get(market.id) ?? []) : null,
+  };
 }
 
 /** Today's briefing for a person, worked out now (for the page before the 07:00 one exists). */
 export async function previewBriefing(db: Db, profile: { userId: string; riskComfort: FinanceRiskComfort; horizon: FinanceHorizon; timezone: string }, now = new Date()) {
   const holdings = await holdingsOf(db, profile.userId);
-  const [views, ideas] = await Promise.all([currentViews(db, holdings.map((h) => h.tickerId)), ideasFor(db, profile, IDEAS_IN_BRIEFING)]);
-  return composeBriefing(zonedParts(now, profile.timezone).date, holdings, views, ideas[0] ?? null, profile);
+  const [views, ideas, prices] = await Promise.all([
+    currentViews(db, holdings.map((h) => h.tickerId)),
+    ideasFor(db, profile, IDEAS_IN_BRIEFING),
+    pricesOf(db, holdings, now),
+  ]);
+  return composeBriefing(zonedParts(now, profile.timezone).date, holdings, views, ideas[0] ?? null, profile, prices);
 }
 
 /** Writes the day's briefing once; returns it, or null when it already existed. */
-export async function createBriefing(db: Db, profile: { userId: string; riskComfort: FinanceRiskComfort; horizon: FinanceHorizon; timezone: string }, date: string) {
+export async function createBriefing(db: Db, profile: { userId: string; riskComfort: FinanceRiskComfort; horizon: FinanceHorizon; timezone: string }, date: string, now = new Date()) {
   const holdings = await holdingsOf(db, profile.userId);
-  const [views, ideas] = await Promise.all([currentViews(db, holdings.map((h) => h.tickerId)), ideasFor(db, profile, IDEAS_IN_BRIEFING)]);
-  const built = composeBriefing(date, holdings, views, ideas[0] ?? null, profile);
+  const [views, ideas, prices] = await Promise.all([
+    currentViews(db, holdings.map((h) => h.tickerId)),
+    ideasFor(db, profile, IDEAS_IN_BRIEFING),
+    pricesOf(db, holdings, now),
+  ]);
+  const built = composeBriefing(date, holdings, views, ideas[0] ?? null, profile, prices);
   const made = await db.financeBriefing.createMany({
     data: [{ userId: profile.userId, date, content: built.content as unknown as Prisma.InputJsonValue, headline: built.headline, needsLook: built.needsLook, hasViews: built.hasViews }],
     skipDuplicates: true,
@@ -212,7 +289,7 @@ export async function sweepBriefings(db: Db, now = new Date(), limit = 25): Prom
       take: limit - result.made,
     });
     for (const p of people) {
-      const built = await createBriefing(db, p, date);
+      const built = await createBriefing(db, p, date, now);
       if (!built) continue;
       result.made += 1;
       const sent = await deliver(db, { userId: p.userId, email: p.user.email, briefingEmail: p.briefingEmail }, date, built, now);

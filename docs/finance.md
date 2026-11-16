@@ -77,6 +77,21 @@ Migration: `20270208000000_finance_briefing`.
 
 ## Step 2b: fixes after the review of steps 0–2 (FIN-CR-006)
 
-- **Agreement numbers set by staff** (idea 19, FIN-D-022): `FinanceSettings` holds one row (id `default`) with the agreement needed, a manager agent's weight and the Sell bar; `FinanceSettingsChange` is the audit trail. `/superadmin/finance` edits them; `settleJob` and `giveVerdict` read them at the point of use.
+**PR A:**
+
+- **Agreement numbers set by staff** (idea 19, FIN-D-022): `FinanceSettings` holds one row (id `default`) with the agreement needed, a manager agent's weight and the Sell bar; `FinanceSettingsChange` is the audit trail. `/superadmin/finance` edits them; `settleJob` and `giveVerdict` read them at the point of use. The `FINANCE_AGREEMENT_NEEDED` / `FINANCE_SELL_AGREEMENT_NEEDED` env vars and the fixed manager weight are gone.
+- **"Just watch instead"** (idea 22): a button beside the ticker box in setup adds the typed stock with no shares, so a curious saver never needs to notice that an empty shares field means watch.
+- **A late briefing is still sent** (idea 24): `isBriefingTime` is due for 07:00–09:59 local (`BRIEFING_WINDOW_HOURS`), not only the first minute. After 10:00 the day is skipped, as before.
+- **No "More"** (idea 27, part 1): setup and "+ Add" ask only for the stock and its shares. The average-price field moved to the holding page (below).
 
 Migration: `20270209000000_finance_settings`.
+
+**PR B:**
+
+- **Finnhub for testing** (idea 18, FIN-D-021): `lib/finance/finnhub.ts`, used only through `marketData()` (FIN-D-013). With `FINNHUB_API_KEY` set it answers search, a quote-based "bar" (the free plan has no daily candles, so `latestBar` reads `/quote` instead), news and the earnings calendar. Without a key, Finance keeps the built-in directory and shows "—". The key is never logged, returned to a page, or committed; `.env.example` and `scripts/cloudflare/upload-secrets.mjs` carry it like any other secret. Calls queue behind a 55-a-minute rolling window (`waitForSlot`), comfortably under the free plan's limit.
+- **Reading prices already recorded** (`lib/finance/prices.ts`): `recentBars` (30 days by default), `latestChanges`, `dayChange`, `portfolioChange` (shares-weighted, watch-only and priceless stocks left out), `changeSince`, `lastClose` and `sparklinePoints` (an SVG polyline). Nothing here calls the provider, so opening a page costs no calls.
+- **The briefing's opening and closing lines** (idea 21, `overallLine` / `marketLine` in `lib/finance/briefing.ts`): "Overall: your holdings rose 1.2% yesterday (S&P 500: +0.8%)" and one plain sentence about the market, both left out when the closes aren't known (FIN-D-018 stays: no AI, no advice). `takeMarketSnapshot` in `research.ts` records SPY (the most-traded S&P 500 ETF) as a market proxy, once a day, after the evening's own tickers are all done.
+- **What a holding is worth to them, in three layers** (idea 27, parts 2–3): `FinanceHolding.addedPrice` is the close on the day it was added, set automatically ("Up 4% since you added it"); `avgCost` is what they paid, typed on the holding page (`setPaidPrice`) or worked out from a date they bought it (`setPaidFromDate`, using the close we recorded that day — only days we have one for are accepted, and a future date is refused, since the free plan has no price history to fall back on); `avgCostAsOf` records which. Profit is information only: no message ever suggests selling because of the price paid, and agents never see `avgCost` or `addedPrice`.
+- **On the page:** the holdings table shows a 30-day sparkline and today's change; the holding page adds the last close, "since you added it", and the profit line.
+
+Migration: `20270210100000_finance_holding_cost`.

@@ -40,6 +40,22 @@ export function profileWords(profile: { riskComfort: FinanceRiskComfort; horizon
   return `${RISK_LABEL[profile.riskComfort]}, ${horizon}`;
 }
 
+/** "+1.2%" or "-0.8%", to one decimal. */
+export function signedPercent(pct: number): string {
+  const rounded = Math.round(pct * 10) / 10;
+  return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)}%`;
+}
+
+/** "$41.20". */
+export function money(value: number): string {
+  return `$${value.toFixed(2)}`;
+}
+
+/** "17 Nov 2026" for a date, in the reader's own terms. */
+export function dayWords(at: Date): string {
+  return at.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 export const TICKER_TYPE_LABEL: Record<FinanceTickerType, string> = { stock: "Stock", etf: "ETF" };
 
 /** US tickers: 1–5 letters, optionally a class suffix ("BRK.B", "BF-B"). */

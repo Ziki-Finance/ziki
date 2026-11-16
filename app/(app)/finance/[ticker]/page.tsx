@@ -2,13 +2,15 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { FINANCE_PATH, RISK_LEVEL_LABEL, TICKER_TYPE_LABEL, agreementWords, callLabel, normalizeSymbol, sharesWords, tickerPath } from "@/lib/finance";
+import { FINANCE_PATH, RISK_LEVEL_LABEL, TICKER_TYPE_LABEL, agreementWords, callLabel, dayWords, money, normalizeSymbol, sharesWords, signedPercent, tickerPath } from "@/lib/finance";
 import { getProfile, holdingFor } from "@/lib/finance/holdings";
 import { currentViews, viewHistory } from "@/lib/finance/research";
+import { changeSince, lastClose, latestChanges, recentBars } from "@/lib/finance/prices";
 import { ViewChip } from "@/components/finance/view-chip";
 import { removeHoldingAction } from "@/app/actions/finance";
 import { FinanceFooter } from "@/components/finance/finance-footer";
-import { EditSharesForm } from "@/components/finance/holding-forms";
+import { EditSharesForm, PaidDateForm, PaidPriceForm } from "@/components/finance/holding-forms";
+import { Sparkline } from "@/components/finance/sparkline";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,17 @@ export default async function FinanceHoldingPage({ params }: { params: Promise<{
   const { ticker } = holding;
   const [views, history] = await Promise.all([currentViews(prisma, [ticker.id]), viewHistory(prisma, ticker.id)]);
   const view = views.get(ticker.id) ?? null;
+  const [changes, bars] = await Promise.all([latestChanges(prisma, [ticker.id]), recentBars(prisma, [ticker.id])]);
+  const today = changes.get(ticker.id) ?? null;
+  const close = lastClose(bars, ticker.id);
+  // The close when they added it, so this needs nothing from them (idea 27, layer 1).
+  const sinceAdded = holding.addedPrice === null ? null : changeSince(close, Number(holding.addedPrice));
+  // What they paid is theirs alone: shown here, never sent to an agent.
+  const paid = holding.avgCost === null ? null : Number(holding.avgCost);
+  const paidChange = changeSince(close, paid);
+  // What the position is up or down in dollars, for the "in all" part of the line.
+  const paidInAll = paid !== null && close !== null && holding.shares !== null ? (close - paid) * Number(holding.shares) : null;
+  const sparkline = (bars.get(ticker.id) ?? []).map((bar) => bar.close);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -41,10 +54,32 @@ export default async function FinanceHoldingPage({ params }: { params: Promise<{
         <h1 className="text-2xl font-extrabold tracking-tight text-zk-text">
           {ticker.name} <span className="font-mono text-zk-text2">({ticker.symbol})</span>
         </h1>
-        <p className="text-sm text-zk-text2">
-          {holding.shares === null ? "Watching" : `${sharesWords(holding.shares)} shares`} · — · {TICKER_TYPE_LABEL[ticker.type]}
-          {ticker.exchange ? ` on ${ticker.exchange}` : ""}
+        <p className="flex flex-wrap items-center gap-2 text-sm text-zk-text2">
+          <span>
+            {holding.shares === null ? "Watching" : `${sharesWords(holding.shares)} shares`} ·{" "}
+            {today === null ? "—" : <span className={today >= 0 ? "text-zk-text" : "text-zk-bad-fg"}>{signedPercent(today)} today</span>} ·{" "}
+            {TICKER_TYPE_LABEL[ticker.type]}
+            {ticker.exchange ? ` on ${ticker.exchange}` : ""}
+          </span>
+          {sparkline.length > 1 ? <Sparkline values={sparkline} label={`${ticker.symbol} over the last 30 days`} /> : null}
         </p>
+        {close !== null ? <p className="text-sm text-zk-text2">Last close: {money(close)}</p> : null}
+        {sinceAdded !== null ? (
+          <p className={`text-sm ${sinceAdded >= 0 ? "text-zk-text2" : "text-zk-bad-fg"}`}>
+            {sinceAdded >= 0 ? "Up" : "Down"} {Math.abs(sinceAdded).toFixed(1)}% since you added it
+          </p>
+        ) : null}
+        {paid !== null ? (
+          <p className={`text-sm ${(paidChange ?? 0) >= 0 ? "text-zk-text2" : "text-zk-bad-fg"}`}>
+            You paid {money(paid)} a share
+            {holding.avgCostAsOf ? ` (based on the price on ${dayWords(holding.avgCostAsOf)})` : ""}
+            {paidInAll === null || paidChange === null
+              ? ""
+              : ` · You're ${paidInAll >= 0 ? "up" : "down"} ${money(Math.abs(paidInAll))} (${signedPercent(paidChange)})`}
+          </p>
+        ) : holding.shares !== null ? (
+          <p className="text-sm text-zk-text2">Add what you paid to see your profit.</p>
+        ) : null}
       </header>
 
       <section className={card} aria-labelledby="why-heading">
@@ -113,11 +148,14 @@ export default async function FinanceHoldingPage({ params }: { params: Promise<{
         <h2 id="edit-heading" className={heading}>
           Your stock
         </h2>
-        <EditSharesForm
-          holdingId={holding.id}
-          shares={holding.shares === null ? "" : holding.shares.toString()}
-          avgCost={holding.avgCost === null ? "" : holding.avgCost.toString()}
-        />
+        <EditSharesForm holdingId={holding.id} shares={holding.shares === null ? "" : holding.shares.toString()} />
+        {holding.shares !== null ? (
+          <div className="space-y-3 border-t border-dashed border-zk-border pt-3">
+            <p className="text-xs text-zk-muted">Optional, and only ever shown to you. Agents never see what you paid.</p>
+            <PaidPriceForm holdingId={holding.id} avgCost={holding.avgCost === null ? "" : holding.avgCost.toString()} />
+            <PaidDateForm holdingId={holding.id} boughtOn={holding.avgCostAsOf ? holding.avgCostAsOf.toISOString().slice(0, 10) : ""} />
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           {holding.shares !== null ? (
             <form action={removeHoldingAction}>
