@@ -8,8 +8,8 @@ name: Platform sweeps
 # GitHub may start scheduled runs a few minutes late. Every sweep is idempotent and
 # lease-guarded, so a late, skipped or overlapping run is safe.
 #
-# Secrets: the names in scripts/cron/sweep-secrets.json. Only DATABASE_URL is required;
-# set the rest with: node scripts/cron/set-github-sweep-secrets.mjs
+# Secrets: the names in scripts/cron/sweep-secrets.json, listed one by one in the last step.
+# Only DATABASE_URL is required; set the rest with: node scripts/cron/set-github-sweep-secrets.mjs
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -33,28 +33,6 @@ jobs:
         with:
           ref: main
 
-      - name: Pass the sweep secrets that are set
-        env:
-          ALL_SECRETS: ${{ toJSON(secrets) }}
-        run: |
-          node -e '
-            const fs = require("node:fs");
-            const all = JSON.parse(process.env.ALL_SECRETS);
-            const { secrets } = JSON.parse(fs.readFileSync("scripts/cron/sweep-secrets.json", "utf8"));
-            if (!all.DATABASE_URL) { console.error("Missing repository secret DATABASE_URL."); process.exit(1); }
-            const lines = [];
-            const names = [];
-            for (const [secretName, envName] of Object.entries(secrets)) {
-              const value = all[secretName];
-              if (!value) continue;
-              const delimiter = "EOF_" + require("node:crypto").randomBytes(12).toString("hex");
-              lines.push(`${envName}<<${delimiter}`, value, delimiter);
-              names.push(envName);
-            }
-            fs.appendFileSync(process.env.GITHUB_ENV, lines.join("\n") + "\n");
-            console.log("Passing: " + names.join(", "));
-          '
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -69,9 +47,43 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Each secret is named here (keep in step with scripts/cron/sweep-secrets.json). GitHub
+      # holds back workflows that load all secrets at once (INF-I-009). Unset secrets arrive
+      # as empty strings, which some settings would misread, so they are removed first.
       - name: Run the sweeps
         env:
           NODE_ENV: production
           AUTH_URL: ${{ vars.APP_URL }}
           NEXTAUTH_URL: ${{ vars.APP_URL }}/api/auth
-        run: pnpm cron:sweeps
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          PASSWORD_PEPPER: ${{ secrets.PASSWORD_PEPPER }}
+          WEBHOOK_SECRET_KEY: ${{ secrets.WEBHOOK_SECRET_KEY }}
+          ZIKI_AI_PROVIDER: ${{ secrets.ZIKI_AI_PROVIDER }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL }}
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+          TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          GITHUB_APP_ID: ${{ secrets.ZIKI_GITHUB_APP_ID }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.ZIKI_GITHUB_APP_PRIVATE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.ZIKI_GITHUB_TOKEN }}
+        run: |
+          if [[ -z "$DATABASE_URL" ]]; then echo "Missing repository secret DATABASE_URL."; exit 1; fi
+          passing=()
+          for name in DATABASE_URL AUTH_SECRET PASSWORD_PEPPER WEBHOOK_SECRET_KEY ZIKI_AI_PROVIDER ANTHROPIC_API_KEY ANTHROPIC_MODEL GEMINI_API_KEY GEMINI_MODEL OPENROUTER_API_KEY OPENROUTER_MODEL TYPESENSE_HOST TYPESENSE_PORT TYPESENSE_PROTOCOL TYPESENSE_API_KEY STRIPE_SECRET_KEY SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS SMTP_FROM GITHUB_APP_ID GITHUB_APP_PRIVATE_KEY GITHUB_TOKEN; do
+            if [[ -z "${!name}" ]]; then unset "$name"; else passing+=("$name"); fi
+          done
+          echo "Passing: ${passing[*]}"
+          pnpm cron:sweeps
