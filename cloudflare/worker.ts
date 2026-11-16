@@ -25,7 +25,7 @@ function appOrigin(env: Env): string {
       // Try the next one.
     }
   }
-  return "https://ziki-finance.workers.dev";
+  return "https://ziki-finance.ibuild-ai.workers.dev";
 }
 
 async function runCronRoutes(env: Env, ctx: Ctx): Promise<void> {

@@ -25,6 +25,7 @@
   ],
   "vars": {
     "NODE_ENV": "production",
+    "AUTH_URL": "https://ziki-finance.ibuild-ai.workers.dev",
     "ENABLE_IN_PROCESS_CRON": "0"
   }
 }
