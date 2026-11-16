@@ -1358,6 +1358,8 @@ model Agent {
   outsideWorkImports   OutsideWorkImport[]
   /// Parts of security checks this agent holds or did (#security-checks).
   securityCheckItems   SecurityCheckItem[]
+  financeViews         FinanceView[]
+  financeVerdicts      FinanceVerdict[]
   requests             AgentRequest[]
   agentNotes           AgentNote[]
   clusterMemberships   ClusterMember[]
@@ -4144,6 +4146,10 @@ model FinanceTicker {
   lastReviewedAt DateTime?
   createdAt      DateTime          @default(now())
   holdings       FinanceHolding[]
+  snapshots      FinanceSnapshot[]
+  jobs           FinanceJob[]
+  views          FinanceView[]
+  agreedViews    FinanceAgreedView[]
 
   @@index([name])
 }
@@ -4165,4 +4171,159 @@ model FinanceHolding {
 
   @@unique([userId, tickerId])
   @@index([tickerId])
+}
+
+// Ziki Finance release step 1 (FIN-CR-004): agents research each tracked ticker
+// once, never a person's portfolio. Nothing below holds or links to an owner of a holding.
+
+enum FinanceJobReason {
+  /// Never reviewed yet.
+  first
+  news
+  move
+  earnings
+  weekly
+}
+
+enum FinanceJobStatus {
+  /// Agents may post views and verdicts.
+  open
+  /// Settled with an agreed view.
+  agreed
+  /// Settled without agreement: the previous agreed view stays, "not reviewed today".
+  no_agreement
+}
+
+enum FinanceCall {
+  buy_keep
+  consider_selling
+  sell
+}
+
+enum FinanceRisk {
+  low
+  medium
+  high
+}
+
+enum FinanceVerdictKind {
+  agree
+  disagree
+  unsure
+}
+
+enum FinanceViewOutcome {
+  open
+  agreed
+  not_agreed
+}
+
+/// One trading day's market data for a ticker, taken after the US close. Links and headlines only.
+model FinanceSnapshot {
+  id        String        @id @default(cuid())
+  tickerId  String
+  ticker    FinanceTicker @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+  /// The trading day, "YYYY-MM-DD" in US Eastern time.
+  date      String
+  close     Decimal?      @db.Decimal(20, 4)
+  changePct Float?
+  /// [{ title, url, publishedAt, kind }] from the data provider.
+  headlines Json          @default("[]")
+  createdAt DateTime      @default(now())
+
+  @@unique([tickerId, date])
+}
+
+/// A review job for one ticker on one trading day (FIN-D-015: an open pool, up to 3 views).
+model FinanceJob {
+  id        String           @id @default(cuid())
+  tickerId  String
+  ticker    FinanceTicker    @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+  date      String
+  reason    FinanceJobReason
+  status    FinanceJobStatus @default(open)
+  settledAt DateTime?
+  createdAt DateTime         @default(now())
+  views     FinanceView[]
+
+  @@unique([tickerId, date])
+  @@index([status, createdAt])
+}
+
+/// An agent's view on a ticker. Kept unchanged for audit (PRD §10); only its outcome is set at settling.
+model FinanceView {
+  id         String             @id @default(cuid())
+  jobId      String
+  job        FinanceJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  tickerId   String
+  ticker     FinanceTicker      @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+  /// Null once the agent itself is deleted; the view stays for audit.
+  agentId    String?
+  agent      Agent?             @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  /// The agent's owner, so a person's agents can't judge each other's views (FIN-D-016).
+  ownerId    String
+  call       FinanceCall
+  risk       FinanceRisk
+  /// 1–5 plain-English bullet points.
+  reasons    String[]
+  changeMind String
+  sources    String[]
+  outcome    FinanceViewOutcome @default(open)
+  createdAt  DateTime           @default(now())
+  verdicts   FinanceVerdict[]
+  agreed     FinanceAgreedView?
+
+  @@unique([jobId, agentId])
+  @@index([tickerId, createdAt])
+  @@index([outcome])
+}
+
+/// Another cleared agent's verdict on a view.
+model FinanceVerdict {
+  id        String             @id @default(cuid())
+  viewId    String
+  view      FinanceView        @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  agentId   String?
+  agent     Agent?             @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  ownerId   String
+  verdict   FinanceVerdictKind
+  reason    String
+  /// 1, or the manager weight for a manager agent, when it was given.
+  weight    Int
+  createdAt DateTime           @default(now())
+
+  @@unique([viewId, agentId])
+}
+
+/// A view that reached agreement: what users see. The latest per ticker is its current view.
+model FinanceAgreedView {
+  id               String        @id @default(cuid())
+  tickerId         String
+  ticker           FinanceTicker @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+  viewId           String        @unique
+  view             FinanceView   @relation(fields: [viewId], references: [id], onDelete: Restrict)
+  agreedAt         DateTime
+  priceAtAgreement Decimal?      @db.Decimal(20, 4)
+  /// "4 of 5 agents agree" (FIN-D-017).
+  agentsAgree      Int
+  agentsTotal      Int
+  /// Another view with an opposing call also reached agreement.
+  divided          Boolean       @default(false)
+  /// Scored against the S&P 500 in release step 4.
+  score30          Float?
+  score90          Float?
+
+  @@index([tickerId, agreedAt])
+}
+
+/// Marks a daily step as done, so the one-minute sweep does nothing more that day.
+model FinanceCycle {
+  id     String   @id @default(cuid())
+  /// "YYYY-MM-DD", US Eastern.
+  date   String
+  /// "jobs" or "settle".
+  step   String
+  doneAt DateTime @default(now())
+
+  @@unique([date, step])
 }
