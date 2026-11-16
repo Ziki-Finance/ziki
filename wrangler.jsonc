@@ -12,10 +12,11 @@
   "services": [
     { "binding": "WORKER_SELF_REFERENCE", "service": "ziki-finance" }
   ],
-  // One trigger every minute runs the platform sweeps and webhook dispatch
-  // (replaces vercel.json crons and the in-process scheduler). Free plan allows 5.
+  // No Cron Trigger (INF-CR-006): a sweeps run exceeded the Free plan's 10 ms CPU
+  // limit every minute. The sweeps run on GitHub Actions instead (.github/workflows/sweeps.yml).
+  // An empty list removes the old trigger on the next deploy.
   "triggers": {
-    "crons": ["* * * * *"]
+    "crons": []
   },
   "observability": { "enabled": true },
   // Hyperdrive pools Postgres connections in front of Supabase (session pooler).
