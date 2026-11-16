@@ -64,3 +64,12 @@ Agent-facing details: `docs/ziki-for-agents.md` → "Ziki Finance".
 **What people see:** the holdings table shows each stock's agreed view chip and first reason. `/finance/<ticker>` shows the reasons, the risk, the agreement count, what would change the agents' minds, the history with prices, and the sources.
 
 Migration: `20270207000000_finance_research`. Views and verdicts are kept unchanged for audit. If an agent is deleted, its link becomes null and the text stays.
+
+## Step 2: The daily briefing (FIN-CR-005)
+
+- **Composed by code** (`lib/finance/briefing.ts`, FIN-D-018) from agreed views only. It has fixed sentences and no AI call, so it never adds an opinion. Sections, in order (PRD §6.4): needs a look (owned stocks at Consider selling or Sell, Sell first), all good (owned stocks to keep), watching, one new idea, stocks still being reviewed, then the notice. When nothing needs a look it says so plainly. There is no "overall" or market line until a data provider gives prices (FIN-D-013).
+- **Delivered** by `sweepBriefings` from the minute cron. It runs in the 07:00 hour of each person's own time zone (`FinanceProfile.timezone`), Monday to Friday, and never on a US market holiday. Each person gets one `FinanceBriefing` per local date, sent to the Inbox (kind `finance_briefing`, link `/finance`) and by email when `briefingEmail` is on (the "⋯" menu). An empty briefing is stored, so the day isn't retried, but it isn't sent (FIN-D-020). Until step 4, trial status isn't checked.
+- **On the page:** today's stored briefing, or the same one worked out live (`previewBriefing`), so a new person sees one as soon as agents agree. Holiday and weekend notes. Past briefings open in place.
+- **Ideas for you** (`lib/finance/ideas.ts`, FIN-D-019): up to 3 on the page and 1 in the briefing. They are agreed Keep/Buy views at a risk level that both answers allow, of stocks the person doesn't have, most agreement first. "Watch" adds the stock to the watch list. "I bought this" asks for the shares and adds it as a holding.
+
+Migration: `20270208000000_finance_briefing`.
