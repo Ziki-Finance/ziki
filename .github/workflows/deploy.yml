@@ -120,6 +120,9 @@ jobs:
           AUTH_SECRET: "ci-build-secret-dummy-must-be-long-enough-32-chars"
           # next.config.ts bakes NEXTAUTH_URL into the build.
           NEXTAUTH_URL: ${{ vars.APP_URL }}/api/auth
+          # The deploy command reads the Worker's bindings locally first, and Wrangler requires a local
+          # address for the HYPERDRIVE binding. It is never used by the live Worker, which uses Hyperdrive.
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: "postgresql://dummy:dummy@localhost:5432/dummy"
           NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm cf:deploy
 
