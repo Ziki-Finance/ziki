@@ -1,0 +1,287 @@
+<title>Ziki Finance Wireframes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a stack of grey-box screen frames, each with margin notes; low fidelity on purpose (no colour beyond one annotation ink). */
+:root{
+  --bg:#f3f4f2; --paper:#ffffff; --ink:#2b2d2c; --muted:#7c807d; --line:#b9bdb9; --fill:#e6e8e5;
+  --note:#c2410c; --good:#3f6f4a; --warn:#9a6b12; --bad:#a33a2f;
+  --hand:"Kalam","Comic Sans MS",cursive; --ui:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#161817; --paper:#1f2221; --ink:#e4e6e3; --muted:#9aa09c; --line:#4a4f4c; --fill:#2b2f2d;
+  --note:#fb923c; --good:#7fb88a; --warn:#d9a94a; --bad:#e07b6f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#161817; --paper:#1f2221; --ink:#e4e6e3; --muted:#9aa09c; --line:#4a4f4c; --fill:#2b2f2d;
+  --note:#fb923c; --good:#7fb88a; --warn:#d9a94a; --bad:#e07b6f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:48px}
+header h1{font-family:var(--hand);font-size:2.2rem;margin:0;text-wrap:balance}
+header p{margin:6px 0 0;color:var(--muted);max-width:68ch}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:14px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.screen{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px;align-items:start}
+@media (max-width:820px){.screen{grid-template-columns:minmax(0,1fr)}}
+.label{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.label b{font-family:var(--hand);font-size:1.5rem}
+.label code{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px dashed var(--line);padding:2px 8px;border-radius:4px}
+.frame{background:var(--paper);border:2px solid var(--ink);border-radius:10px;overflow:hidden;min-width:0}
+.bar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:2px solid var(--ink);font-family:var(--mono);font-size:12px;color:var(--muted)}
+.dots{display:flex;gap:5px}.dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted)}
+.url{flex:1;border:1.5px solid var(--line);border-radius:20px;padding:3px 12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1.5px dashed var(--line);font-size:13px;color:var(--muted);flex-wrap:wrap}
+.nav .logo{width:22px;height:22px;border-radius:6px;background:var(--fill);border:1.5px solid var(--line)}
+.nav .sp{flex:1}
+.nav .tab{padding:2px 0}
+.body{padding:20px;display:flex;flex-direction:column;gap:18px}
+.box{border:1.5px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.box h3{margin:0;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.ph{background:var(--fill);border-radius:4px;height:10px}
+.w30{width:30%}.w50{width:50%}.w70{width:70%}.w90{width:90%}
+.input{border:1.5px solid var(--ink);border-radius:8px;padding:10px 12px;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--ink);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;background:var(--paper);color:var(--ink);white-space:nowrap}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.ghost{border-style:dashed;color:var(--muted)}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.row.sb{justify-content:space-between}
+.hr{border-top:1.5px dashed var(--line)}
+.chip{font-size:12px;font-weight:700;border:1.5px solid currentColor;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.chip.keep{color:var(--good)}.chip.cons{color:var(--warn)}.chip.sell{color:var(--bad)}
+.muted{color:var(--muted)}.small{font-size:12.5px}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+.tbl td,.tbl th{padding:9px 6px;border-bottom:1.5px dashed var(--line);text-align:left;vertical-align:middle}
+.tbl th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.scroll{overflow-x:auto}
+.spark{width:70px;height:20px}
+.spark path{fill:none;stroke:var(--muted);stroke-width:1.5}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.choice{border:1.5px solid var(--line);border-radius:8px;padding:10px;text-align:center;font-size:13px}
+.choice.on{border-color:var(--ink);border-width:2px;font-weight:700}
+.notes{font-family:var(--hand);color:var(--note);font-size:16px;line-height:1.35;display:flex;flex-direction:column;gap:12px;padding-top:6px}
+.notes div{display:flex;gap:8px}
+.notes .n{flex:none;width:22px;height:22px;border:1.5px solid var(--note);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-family:var(--ui);font-weight:700}
+.pin{display:inline-flex;width:18px;height:18px;border:1.5px solid var(--note);color:var(--note);border-radius:50%;font-size:11px;font-weight:700;align-items:center;justify-content:center;flex:none}
+.disc{font-size:11.5px;color:var(--muted);border-top:1.5px dashed var(--line);padding-top:10px}
+.hidden-note{font-family:var(--hand);color:var(--note);font-size:14px;border:1.5px dashed var(--note);border-radius:6px;padding:1px 8px}
+.mail{font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.alertband{border:2px solid var(--bad);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+@media (max-width:820px){.two{grid-template-columns:minmax(0,1fr)}}
+.phone{max-width:340px}
+footer{color:var(--muted);font-size:13px}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Ziki Finance · low-fidelity wireframes</h1>
+  <p>v1 screens for <b>/finance</b>, matching PRD v0.2 (<code>docs/plans/finance-prd.md</code>). These are grey boxes for agreeing layout and flow. Colour, type and exact copy follow Ziki's existing design when it's built. The tickers and numbers are examples.</p>
+  <div class="legend">
+    <span><span class="pin">1</span> numbered note, explained on the right</span>
+    <span><span class="chip keep">Keep</span><span class="chip cons">Consider selling</span><span class="chip sell">Sell</span> the agents' view</span>
+    <span><span class="hidden-note">no Finance tab</span> hidden route (D-011)</span>
+  </div>
+</header>
+
+<!-- 1. Signed out -->
+<section class="screen">
+  <div class="label"><b>1 · Signed out</b><code>/finance</code></div>
+  <div class="frame">
+    <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">ziki.dev/finance</div></div>
+    <div class="nav"><span class="logo"></span><span>Ziki</span><span class="sp"></span><span class="btn">Sign in</span></div>
+    <div class="body" style="align-items:center;text-align:center;padding:40px 20px">
+      <div style="font-size:1.6rem;font-weight:700;max-width:28ch;text-wrap:balance">Agents watch your stocks. You get one short note each morning.</div>
+      <div class="muted small" style="max-width:52ch">They tell you what to keep, what to think about selling, and what's worth watching, with the reasons in plain words.</div>
+      <div class="input" style="width:min(460px,100%)"><span>What do you own? Type a ticker or company</span><span class="pin">1</span></div>
+      <div class="box" style="width:min(460px,100%);text-align:left">
+        <div class="row sb"><h3>Example briefing</h3><span class="pin">2</span></div>
+        <div class="ph w90"></div><div class="ph w70"></div><div class="ph w50"></div>
+      </div>
+      <div class="disc" style="width:min(460px,100%)">Research from AI agents, not financial advice.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><span class="n">1</span>Typing a ticker opens sign-in, and then onboarding continues with that ticker already added.</div>
+    <div><span class="n">2</span>A static sample, so visitors see what they'll get before signing up.</div>
+    <div><span class="n">·</span>No link to this page anywhere. It's noindex and not in the sitemap.</div>
+  </div>
+</section>
+
+<!-- 2. Onboarding -->
+<section class="screen">
+  <div class="label"><b>2 · First visit (one screen, three parts)</b><code>/finance · signed in, no profile yet</code></div>
+  <div class="frame">
+    <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">ziki.dev/finance</div></div>
+    <div class="nav"><span class="logo"></span><span>Ziki</span><span class="tab">Your App</span><span class="tab">Marketing</span><span class="tab">Security</span><span class="tab">Discover</span><span class="hidden-note">no Finance tab</span><span class="sp"></span><span>Inbox</span><span>●</span></div>
+    <div class="body">
+      <div class="box">
+        <div class="row sb"><h3>a · Before you start</h3><span class="pin">1</span></div>
+        <div class="small">Ziki Finance shares research from AI agents. It is not personal financial advice. You make your own decisions, and investing can lose money.</div>
+        <div class="row small"><span>☐</span> I understand, and I'm 18 or over</div>
+      </div>
+      <div class="box">
+        <div class="row sb"><h3>b · Two quick questions</h3><span class="pin">2</span></div>
+        <div class="small">How do you feel about risk?</div>
+        <div class="grid2" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="choice">Careful</div><div class="choice on">Balanced</div><div class="choice">Adventurous</div></div>
+        <div class="small">When might you need this money?</div>
+        <div class="grid2" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="choice">Within 1 year</div><div class="choice">1–5 years</div><div class="choice on">5+ years</div></div>
+      </div>
+      <div class="box">
+        <div class="row sb"><h3>c · Add what you own</h3><span class="pin">3</span></div>
+        <div class="row" style="align-items:stretch">
+          <div class="input" style="flex:1;min-width:180px"><span>Ticker or company</span></div>
+          <div class="input" style="width:110px"><span>Shares</span></div>
+          <span class="btn">Add</span>
+        </div>
+        <div class="small muted">Added: <b>AAPL</b> Apple · 10 &nbsp;·&nbsp; <b>VOO</b> Vanguard S&amp;P 500 ETF · 4 &nbsp;·&nbsp; <b>NWND</b> Northwind · watch only</div>
+        <div class="row small muted"><span class="btn ghost">Just watch instead</span> Leave shares empty to watch a stock</div>
+      </div>
+      <div class="row sb"><span class="small muted">7 days free, then a monthly fee in Ziks</span><span class="btn primary">Start my briefings</span></div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><span class="n">1</span>Asked once. The acceptance time is saved. The button stays disabled until it's ticked.</div>
+    <div><span class="n">2</span>Only two questions, decided by D-008. These set which ideas fit the person, not the agents' views.</div>
+    <div><span class="n">3</span>Autocomplete shows the company name next to the ticker. The average price paid is optional and sits behind "More".</div>
+    <div><span class="n">·</span>One scrolling screen, not a wizard, the same as Security.</div>
+  </div>
+</section>
+
+<!-- 3. Main page -->
+<section class="screen">
+  <div class="label"><b>3 · The Finance page (every day after)</b><code>/finance</code></div>
+  <div class="frame">
+    <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">ziki.dev/finance</div></div>
+    <div class="nav"><span class="logo"></span><span>Ziki</span><span class="tab">Your App</span><span class="tab">Marketing</span><span class="tab">Security</span><span class="tab">Discover</span><span class="sp"></span><span>Inbox</span><span>●</span></div>
+    <div class="body">
+      <div class="row sb"><div style="font-size:1.3rem;font-weight:700">Finance</div><span class="btn ghost">⋯</span></div>
+
+      <div class="box">
+        <div class="row sb"><h3>Today's briefing · Tue 17 Nov</h3><span class="pin">1</span></div>
+        <div class="small"><b>Your holdings rose 1.2% yesterday</b> <span class="muted">(S&amp;P 500 +0.8%)</span></div>
+        <div class="row small"><span class="chip cons">Consider selling</span> <b>ACME</b> sales fell for the second quarter in a row. <span class="muted">4 of 5 agents agree</span></div>
+        <div class="small muted">Everything else: keep. One new idea below.</div>
+      </div>
+
+      <div class="box">
+        <div class="row sb"><h3>Your holdings</h3><span class="row"><span class="btn ghost">+ Add</span><span class="pin">2</span></span></div>
+        <div class="scroll"><table class="tbl">
+          <tr><th>Company</th><th>Shares</th><th>Today</th><th>30 days</th><th>Agents' view</th></tr>
+          <tr><td><b>ACME</b> <span class="muted">Acme Corp</span></td><td>12</td><td>−2.4%</td><td><svg class="spark" viewBox="0 0 70 20"><path d="M0 6 L12 8 L24 7 L36 11 L48 12 L60 15 L70 16"/></svg></td><td><span class="chip cons">Consider selling</span></td></tr>
+          <tr><td><b>AAPL</b> <span class="muted">Apple</span></td><td>10</td><td>+1.1%</td><td><svg class="spark" viewBox="0 0 70 20"><path d="M0 14 L12 12 L24 13 L36 9 L48 10 L60 7 L70 6"/></svg></td><td><span class="chip keep">Keep</span></td></tr>
+          <tr><td><b>VOO</b> <span class="muted">Vanguard S&amp;P 500</span></td><td>4</td><td>+0.8%</td><td><svg class="spark" viewBox="0 0 70 20"><path d="M0 13 L12 12 L24 11 L36 11 L48 9 L60 9 L70 8"/></svg></td><td><span class="chip keep">Keep</span></td></tr>
+          <tr><td><b>NWND</b> <span class="muted">Northwind</span></td><td class="muted">watching</td><td>+0.3%</td><td><svg class="spark" viewBox="0 0 70 20"><path d="M0 12 L12 11 L24 12 L36 10 L48 10 L60 9 L70 9"/></svg></td><td><span class="chip keep">Keep</span></td></tr>
+        </table></div>
+      </div>
+
+      <div class="box">
+        <div class="row sb"><h3>Ideas for you · Balanced, 5+ years</h3><span class="pin">3</span></div>
+        <div class="grid2">
+          <div class="box"><div class="row sb"><b>Fabrikam (FBK)</b><span class="small muted">Risk: Medium</span></div><div class="small">Growing steadily, with low debt.</div><div class="row sb small"><span class="muted">5 of 6 agree</span><span class="btn">Watch</span></div></div>
+          <div class="box"><div class="row sb"><b>Contoso (CTSO)</b><span class="small muted">Risk: Low</span></div><div class="small">Has paid a dividend for years and earns steadily.</div><div class="row sb small"><span class="muted">3 of 4 agree</span><span class="btn">Watch</span></div></div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="row sb"><h3>Past briefings</h3><span class="pin">4</span></div>
+        <div class="row sb small"><span>Mon 16 Nov</span><span class="muted">Nothing needed your attention</span></div>
+        <div class="hr"></div>
+        <div class="row sb small"><span>Fri 13 Nov</span><span class="muted">1 idea · Fabrikam: +3.1% since</span></div>
+        <div class="hr"></div>
+        <div class="row sb small"><span>Thu 12 Nov</span><span class="muted">Consider selling ACME: −5.0% since</span></div>
+      </div>
+      <div class="disc">Research from AI agents, not financial advice. Past results don't promise future ones.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><span class="n">1</span>The same briefing that went to Inbox and email, shown inline. What needs action comes first.</div>
+    <div><span class="n">2</span>The only chart is a 30-day sparkline. Click a row to open the holding (screen 4).</div>
+    <div><span class="n">3</span>Up to 3 ideas, filtered by the risk profile. Only agreed views appear, never one agent's opinion on its own.</div>
+    <div><span class="n">4</span>The track record. Every past call shows how it did since, bad calls included.</div>
+    <div><span class="n">·</span>Settings, risk profile and email preferences are under the "⋯" menu.</div>
+  </div>
+</section>
+
+<!-- 4. Holding detail -->
+<section class="screen">
+  <div class="label"><b>4 · A holding</b><code>/finance/ACME</code></div>
+  <div class="frame">
+    <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">ziki.dev/finance/ACME</div></div>
+    <div class="body">
+      <div class="small muted">← Finance</div>
+      <div class="row sb"><div><div style="font-size:1.3rem;font-weight:700">Acme Corp (ACME)</div><div class="small muted">12 shares · $41.20 · −2.4% today</div></div><span class="chip cons">Consider selling</span></div>
+      <div class="box">
+        <div class="row sb"><h3>Why</h3><span class="small muted">4 of 5 agents agree · Risk: High</span></div>
+        <div class="small">• Sales fell for the second quarter in a row<br>• Two of its largest customers left this year<br>• Debt has grown faster than earnings</div>
+      </div>
+      <div class="box"><div class="row sb"><h3>What would change our mind</h3><span class="pin">1</span></div><div class="small">Sales growing again next quarter, or a new large contract.</div></div>
+      <div class="box"><div class="row sb"><h3>History of the view</h3><span class="pin">2</span></div>
+        <div class="row sb small"><span>12 Nov</span><span><span class="chip cons">Consider selling</span> at $43.40</span></div>
+        <div class="row sb small"><span>2 Oct</span><span><span class="chip keep">Keep</span> at $47.10</span></div>
+      </div>
+      <div class="box"><div class="row sb"><h3>Agents &amp; sources</h3><span class="pin">3</span></div>
+        <div class="row small"><span class="logo" style="width:20px;height:20px;border-radius:50%;background:var(--fill);border:1.5px solid var(--line)"></span> 5 agents · track records 62–71% <span class="muted">· 4 sources (10-Q filing, results call…)</span></div>
+      </div>
+      <div class="row"><span class="btn">I sold this</span><span class="btn">Edit shares</span><span class="btn ghost">Stop watching</span></div>
+      <div class="disc">Research from AI agents, not financial advice.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><span class="n">1</span>Every view has to say what would flip it. This builds trust and teaches the person.</div>
+    <div><span class="n">2</span>Shows the price on each change, so the person can see whether the call was right.</div>
+    <div><span class="n">3</span>Agent names link to their profiles, as elsewhere on Ziki. Sources are required.</div>
+    <div><span class="n">·</span>"I sold this" just marks the holding as sold. Ziki never trades.</div>
+  </div>
+</section>
+
+<!-- 5 & 6. Briefing + alert -->
+<section class="screen">
+  <div class="label"><b>5 · Daily briefing &nbsp;·&nbsp; 6 · Urgent alert</b><code>Inbox + email</code></div>
+  <div class="two">
+    <div class="frame phone">
+      <div class="bar"><span>Email · 07:00</span></div>
+      <div class="body">
+        <div class="small muted">From Ziki · Your portfolio, Tue 17 Nov</div>
+        <div class="mail">Good morning. Here's your portfolio.
+
+Overall: up 1.2% yesterday (S&amp;P 500 +0.8%).
+
+<b>Needs a look (1)</b>
+• Consider selling ACME: sales fell
+  for the second quarter. 4 of 5 agree.
+
+<b>All good (3)</b>
+• Keep AAPL, VOO, NWND
+
+<b>New idea (1)</b>
+• Fabrikam (FBK): steady growth.
+
+Market: one or two plain sentences.</div>
+        <span class="btn primary">Open Finance</span>
+        <div class="disc">Not financial advice.</div>
+      </div>
+    </div>
+    <div class="frame phone">
+      <div class="bar"><span>Inbox · urgent</span></div>
+      <div class="body">
+        <div class="alertband">
+          <div class="row sb"><b>ACME fell 9% today</b><span class="pin">1</span></div>
+          <div class="small">It cut its yearly sales forecast this morning.</div>
+          <div class="small">Agents' view now: <span class="chip sell">Sell</span> <span class="muted">4 of 5 agree</span></div>
+          <div class="small muted">Why it might matter: the forecast cut matches the drop in sales the agents flagged on 12 Nov.</div>
+          <span class="btn">See ACME</span>
+        </div>
+        <div class="small muted">At most 1 alert per holding and 3 per day. Anything more goes into tomorrow's briefing.</div>
+        <div class="disc">Not financial advice.</div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><span class="n">1</span>There are only four triggers: a move of 8% or more, a trading halt, an earnings surprise, or a change to Sell.</div>
+    <div><span class="n">·</span>The briefing goes out on weekdays only. Emails link to /finance, so returning users never need the URL.</div>
+    <div><span class="n">·</span>Alerts say what happened and why. They never say "act now".</div>
+  </div>
+</section>
+
+<footer>Wireframes for review. Approving them confirms the layout and flow, not the visual design. Kept with the PRD at <code>docs/plans/finance-wireframes.html</code>.</footer>
+</div>
