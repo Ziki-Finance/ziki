@@ -33,6 +33,11 @@ Context: The Finance PRD needed answers to 10 open questions. The agent proposed
 - FIN-R-008 → dropped for v1 by FIN-D-011.
 - FIN-R-001..FIN-R-005 (2026-11-16 recommendations) → became FIN-D-003, FIN-D-002/FIN-R-002 (UX pattern adopted in PRD §5), FIN-D-004, FIN-R-007, FIN-D-009. (The text of FIN-R-001 to FIN-R-005 was not kept; unknown.)
 
+## Implementation decisions (2026-11-16, release steps 0–2)
+- FIN-D-012 (confirmed by the user, 2026-11-16): build release steps 0, 1 and 2 in that order, each on its own branch (`feat/finance-step0-foundations`, `feat/finance-step1-agent-research`, `feat/finance-step2-briefing`). Each branch starts from the one before it, so step 1's PR includes step 0 until step 0 is merged.
+- FIN-D-013 (assumption awaiting validation): no market-data provider has been chosen yet (PRD §9.3), so the code talks to the provider through one interface (`lib/finance/market-data.ts`). Until a provider is wired in, ticker search uses a built-in list of well-known US stocks and ETFs, and prices show "—". Swapping in Polygon, Alpaca or FMP later should change that one file. Options considered: block steps 0–2 on the provider choice (rejected, because the user asked to build now); hard-code one provider (rejected, because the provider isn't chosen yet).
+- FIN-D-014 (assumption awaiting validation): the legal opinion (PRD §10) blocks the public launch, not building. This follows `docs/plans/finance-ideas.md`.
+
 # INF: Infrastructure and deployment
 
 ## INF-D-001 — Connect to Supabase through the session pooler

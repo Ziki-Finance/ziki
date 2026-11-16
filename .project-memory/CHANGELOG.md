@@ -17,6 +17,23 @@
 - **History:** first drafted as a technical Phase 0 plan (`docs/plans/finance-phase0-plan.md`, PROPOSED). Replaced the same day, at the user's request, by the v1 plan written as 17 ideas (`docs/plans/finance-ideas.md`). "Phase 0" = PRD §12 release step 0 (Foundations). The Phase 0 file was removed.
 - **Files:** `docs/plans/finance-ideas.md` (not yet committed to git).
 
+- **Approval (2026-11-16):** APPROVED for release steps 0, 1 and 2 (the user: "lets implement step 0, then 1 then 2 in that sequence on separate branches"). Steps 3–5 are still PROPOSED. Implementation: FIN-CR-003 (step 0), FIN-CR-004 (step 1), FIN-CR-005 (step 2).
+
+## FIN-CR-003 — Release step 0: Foundations (ideas 1–5)
+- **Date:** 2026-11-16 · **Approval:** APPROVED (FIN-CR-002, steps 0–2) · **Implementation:** COMPLETED on `feat/finance-step0-foundations` (see ACTUAL AFTER) · **Verification:** unit tests only; not checked in a browser or against a database
+- **BEFORE:** No Finance code. `/finance` is a 404 (or an organisation slug).
+- **APPROVED AFTER:** ideas 1–5 of `docs/plans/finance-ideas.md`: a hidden `/finance` page (noindex, no links), first-visit setup (notice + 18+, two questions), holdings and watch list, the Finance page and holding page before any research, finance clearance for agents.
+- **Acceptance:** the "What is expected" bullets of ideas 1–5.
+
+### FIN-CR-003 ACTUAL AFTER (2026-11-16)
+- Schema + migration `20270206000000_finance_foundations`: `User.financeClearedAt`, `FinanceProfile`, `FinanceTicker`, `FinanceHolding` (unique per person and ticker; `shares` null = watch only; `soldAt`). The migration also reserves the slug `finance` (renames a project or organisation already called that).
+- `lib/finance.ts` (words, notice, parsing), `lib/finance/directory.ts` (built-in list of about 140 US stocks and ETFs, FIN-D-013), `lib/finance/market-data.ts` (provider interface), `lib/finance/holdings.ts`, `lib/finance/clearance.ts`, `app/actions/finance.ts`.
+- Pages: `app/(app)/finance/{layout,page}.tsx` (noindex; welcome signed out, setup, then the Finance page), `app/(app)/finance/[ticker]/page.tsx`, staff page `app/(app)/superadmin/finance/page.tsx` (plus a staff sidebar link). Components in `components/finance/`.
+- `middleware.ts`: only the exact path `/finance` is public. `app/(app)/layout.tsx`: a guest there gets a bare shell, like `/security`.
+- Docs: `docs/finance.md`. Version 0.1.205 → 0.1.206.
+- Not done in step 0 (from the PRD's phase 0 list): the legal opinion and the data-provider choice are business tasks, still open (FIN-D-013, FIN-D-014).
+- **Verification:** `tsc --noEmit` exit 0. ESLint clean on the changed files. `vitest run tests/finance` 24/24 pass. Full suite: 2179 passed and 2 timed out under load (`security-checks.test.ts` PDF font test, existing code; the Finance file-scan test, now given 60 s, passes). Not run: the migration against a database, the pages in a browser, e2e. Nothing deployed.
+
 # INF: Infrastructure and deployment
 
 ## INF-CR-001 — Point DATABASE_URL at Supabase session pooler and apply migrations

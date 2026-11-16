@@ -13,6 +13,9 @@
 | ID | Task | Status |
 |----|------|--------|
 | FIN-T-004 | Legal review before public launch (PRD §10) | Referenced by FIN-RISK-001; the original task text was lost (INF-CR-004). Not started. |
+| FIN-T-005 | Release step 0, ideas 1–5 (FIN-CR-003) | Code done on `feat/finance-step0-foundations`; unit-tested; not yet run against a database or in a browser |
+| FIN-T-006 | Choose a market-data provider (PRD §9.3) and implement `MarketData` for it (FIN-D-013) | Not started; business decision |
+| FIN-T-007 | Try the Finance pages in a browser against a dev database (setup, add, edit, sell, stop watching, staff clearance) | Not started |
 
 # INF: Infrastructure and deployment
 

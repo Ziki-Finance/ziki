@@ -44,6 +44,9 @@ export function isPublicPath(
     // path; every /security/* page still needs signing in), and /security-check for anyone.
     pathWithoutBase === "/security" ||
     pathWithoutBase === "/security-check" ||
+    // Ziki Finance's hidden page (FIN-D-011): the welcome page signed out, at this exact path
+    // only. Each holding's page (/finance/<ticker>) still needs signing in.
+    pathWithoutBase === "/finance" ||
     // Public skills library (guest-accessible per optionalUser()).
     pathWithoutBase === "/skills" ||
     pathWithoutBase.startsWith("/skills/") ||
